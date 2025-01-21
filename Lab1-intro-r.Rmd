@@ -38,12 +38,12 @@ c <- a + b
 c
 ```
 
-**Question 1:** 
+**Question 1:**
 
 What value do you get for the variable c?
 
 **Answer 1:**
-
+5
   
 **Question 2:** 
 
@@ -53,6 +53,7 @@ Use the concept of a variable to calculate the area of a rectangle (a variable c
 
 ```{r}
 #Place your answer here
+rect_area <- side1 * side2
 
 ```
   
@@ -88,6 +89,10 @@ Using the code above as a template, create a function to calculate the area of a
 
 ```{r}
 #Insert code for the answer to question 3 here
+calc_circ_area <- function(r){
+  circ_area <- pi*r^2
+  return(circ_area)
+}
 
 ```
 
@@ -113,7 +118,7 @@ where the c() is a function because is a word `c` followed directly by parenthes
 Describe the c() function. What does it do?
 
 **Answer 4:**
-
+It combines values into a vector or a list. 
 
 
 You can use an index to reference a 'cell' within the vector (1D) or array/matrix (multi-dimensional).  Putting an integer in brackets [number] allows you to access that cell of the vector.  In the example below, the variable index is set to 1 and is used to access the first element of `a[index].`  This is the same `a[1]` because `index` is set to 1.
@@ -131,12 +136,14 @@ What is the value for the 3rd index of vector a (as defined above)?
 **Answer 5:**
 
 ```{r}
+#the 3rd index of vector a is 12
+a[3]
 
 ```
 
 An array is a multi-dimensional variable.  Use the following code to create an array that has values of 0 in each cell.  The `dim` argument in the function is the dimension of the array you are creating. `dim = 10` is a 10-element vector, and `dim = c(10, 20)` is a 10 x 20 matrix with 200 total elements. 
 
-Importantly, the first number is the vertical index (row), and the second number is the horizontal index (column).
+Importantly, the first numberis the vertical index (row), and the second number is the horizontal index (column).
 
 ```{r}
 a <- array(0, dim = 10)
@@ -147,7 +154,8 @@ b
 
 **Question 6:** What are the dimensions of array a and array b?  How many rows?  How many columns?
 
-**Answer 6: **
+**Answer 6: ** array a has 10 columns and 1 row, while array b has 10 columns and 20 rows.
+
 
 The values in each cell of an array can be replaced using the index.  For example, you can replace the value in cell [4,5] with the number 10.  
 
@@ -164,6 +172,8 @@ In array `b`, replace the value in the cell with column number 5 and row number 
 
 ```{r}
 #Insert code for the answer to question seven here
+b[7, 5] <- 100
+b
 
 ```
 
@@ -233,6 +243,11 @@ Use a ‘for loop’ to replace all of the cells in the 2nd row of the ‘b’ a
 ```{r}
 #insert answer to question 8 here
 
+sequence <- seq(1,20, by = 1)
+for(i in sequence){
+  b[2, i]<- 7
+}
+b
 ```
 
 In the for-loop above, we used a vector called `sequence` to represent the vector of elements we wanted to loop through.  The same vector can be created using the following code
@@ -295,6 +310,8 @@ Print the values of vegetation biomass by typing `veg` in the code chunk below. 
 
 ```{r}
 #insert answer to question 9 here
+veg
+#based on the input (300 g C m-2) the values are what I expected. 
 ```
 
 ## Step 7: Simple plotting
@@ -314,6 +331,7 @@ plot(x = years, y = veg, type = "l", xlab = "year", ylab = "vegetation carbon (g
 What do you see in your plot?  
 
 **Answer 10:**
+the growth rate is linear, as expected based on the input. 
 
 ## Step 8: Explore the concept of an ‘if-else statement’
 
@@ -385,6 +403,9 @@ rvar
 
 What value did you get for `rvar`.  What value did you expect?  Run the runif function again.  Did you get a different answer?  Why?
 
+I got 0.6781293 the first time. I just expected a random value between 0 and 1. 
+0.08090705 the second time. Yes, it's different because the function generates a random value between the min and max. 
+
 **Answer 11:**
 
 ## Step 10:  Add mortality to tree simulation
@@ -414,7 +435,10 @@ What proportion of years will the random number be less than the mortality rate?
 
 **Answer 12:**
 
+1/50 or (.02)
+
 If the random number is less than the mortality rate, kill the tree by setting the biomass equal to 0 g C m-2.  Use the following ‘for loop’ to simulate the space of ground that can be occupied by a single tree
+
 
 ```{r}
 for(i in 2:simulation_years){
@@ -433,6 +457,8 @@ Plot the tree biomass over time using the plotting commands described above.
 **Answer 13:**
 ```{r}
 #Insert code for the answer to question 13 here
+years <- seq(1:simulation_years)
+plot(x = years, y = veg, type = "l", xlab = "tree biomass", ylab = "years")
 ```
 
 **Question 14: ** 
@@ -440,21 +466,25 @@ Plot the tree biomass over time using the plotting commands described above.
 Describe what you see in your plot and how it relates to your code and an actual tree
 
 **Answer 14: **
+Though not exactly approximately over the course of 200 years (because the mortality rate is .02) it makes sense that the tree died and grew about 4 times (because the probably of the year being the year it dies is 1 in 50). Because there is some randomization it will not be exactly every 50 years that it dies. 
 
 **Question 15:**  
 
 What ecological processes are represented by the variable NPP?
 
 **Answer 15:**
+net primary production- the net growth of the tree (carbon fixation). Particularly the rate at which it acquires biomass. 
 
 **Question 16:**  
 
 What ecological processes are represented by the variable mortality?
 
 **Answer 16:**
+The mortality rate. The proportion of trees that will die each year, or the probability that a tree will die in a single year. 
 
 **Question 17:**  
 
 How would you find realistic values for NPP and mortality?  Setting the value for these parameters in the model is called parameterizing your model.
 
 **Answer 17:**
+Literature, collected data, or previous models).
