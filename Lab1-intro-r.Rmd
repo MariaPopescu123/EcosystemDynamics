@@ -53,7 +53,10 @@ Use the concept of a variable to calculate the area of a rectangle (a variable c
 
 ```{r}
 #Place your answer here
+side1 <- 4
+side2 <- 6
 rect_area <- side1 * side2
+rect_area
 
 ```
   
@@ -118,7 +121,7 @@ where the c() is a function because is a word `c` followed directly by parenthes
 Describe the c() function. What does it do?
 
 **Answer 4:**
-It combines values into a vector or a list. 
+Concatenates. It combines values into a vector or a list. 
 
 
 You can use an index to reference a 'cell' within the vector (1D) or array/matrix (multi-dimensional).  Putting an integer in brackets [number] allows you to access that cell of the vector.  In the example below, the variable index is set to 1 and is used to access the first element of `a[index].`  This is the same `a[1]` because `index` is set to 1.
@@ -171,7 +174,6 @@ In array `b`, replace the value in the cell with column number 5 and row number 
 **Answer 7:**
 
 ```{r}
-#Insert code for the answer to question seven here
 b[7, 5] <- 100
 b
 
@@ -243,7 +245,7 @@ Use a ‘for loop’ to replace all of the cells in the 2nd row of the ‘b’ a
 ```{r}
 #insert answer to question 8 here
 
-sequence <- seq(1,20, by = 1)
+sequence <- seq(1, 20, by = 1)
 for(i in sequence){
   b[2, i]<- 7
 }
@@ -309,7 +311,6 @@ Print the values of vegetation biomass by typing `veg` in the code chunk below. 
 **Answer 9:** 
 
 ```{r}
-#insert answer to question 9 here
 veg
 #based on the input (300 g C m-2) the values are what I expected. 
 ```
@@ -466,7 +467,7 @@ plot(x = years, y = veg, type = "l", xlab = "tree biomass", ylab = "years")
 Describe what you see in your plot and how it relates to your code and an actual tree
 
 **Answer 14: **
-Though not exactly approximately over the course of 200 years (because the mortality rate is .02) it makes sense that the tree died and grew about 4 times (because the probably of the year being the year it dies is 1 in 50). Because there is some randomization it will not be exactly every 50 years that it dies. 
+The plot reflects how random the cumulative growth and the mortality of an individual tree can be. Though the parameters have not changed, it will be different each time and is stochastic. 
 
 **Question 15:**  
 
@@ -487,4 +488,4 @@ The mortality rate. The proportion of trees that will die each year, or the prob
 How would you find realistic values for NPP and mortality?  Setting the value for these parameters in the model is called parameterizing your model.
 
 **Answer 17:**
-Literature, collected data, or previous models).
+Literature, collected data, or previous models.
