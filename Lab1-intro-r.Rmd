@@ -1,7 +1,9 @@
 ---
 title: 'Introduction to R'
+author: Maria Popescu
 output:
   html_document: default
+
 ---
 
 ## Goals for lab
