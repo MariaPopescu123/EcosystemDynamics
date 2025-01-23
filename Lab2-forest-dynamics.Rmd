@@ -68,7 +68,7 @@ for(i in 2:simulation_years){ # YEAR LOOP
       
       #DELETE THIS AFTER YOU SEE HOW THE LOOP WORKS
       
-      print(paste0("i is: ",i, ", j is: ", j, ", k is: ", k))
+      #print(paste0("i is: ",i, ", j is: ", j, ", k is: ", k))
       
       # THIS IS WHERE YOU WILL INSERT EQUATION WHERE 
       #THE INDEXES i,j, and k ARE USED TO REFERENCE
@@ -215,6 +215,8 @@ Describe and explain the dynamics in the plot above.  How predictable are the dy
 
 **Answer 5:**
 
+They are generally similar, but not exactly the same. The differences are caused by the randomization of whether or not an individual tree dies. 
+
 ## Step 2:  Explore how predictability varies with spatial scale
 
 
@@ -223,19 +225,105 @@ Now simulate a more extensive forest with 5 trees on a side.
 ```{r}
 num_trees_side1 <- 5
 num_trees_side2 <- 5
+veg <- array(NA, dim = c(simulation_years, num_trees_side1, num_trees_side2))
+
 ```
 
 Repeat the calculation (above) of the forest mean biomass for each year in three different simulations with a 5 x 5 forest.
 
 ```{r}
-#INSERT CODE FOR THE THREE DIFFERENT SIMULATIONS
+
+forest_average1 <- array(NA, dim = c(simulation_years))
+
+#THIS LOOPS THROUGH THE TIME-STEP
+for(i in 1:simulation_years){
+	#THIS CALCULATES THE MEAN OF THE ARRAY FOR EACH YEAR ‘i'
+	forest_average1[i] <- mean(veg[i, , ])
+}
+```
+
+Now, repeat the forest simulation three times to get three different sets of yearly mean vegetation biomass value.  I recommend renaming `forest_average1` to `forest_average2` for the second simulation and `forest_average3` for the third simulation.
+
+```{r}
+#1st simulation
+veg[1, , ] <- 0
+mortality <- 0.02
+npp <- 300
+
+for(i in 2:simulation_years){ # YEAR LOOP
+  for(j in 1:num_trees_side1){ #ROW LOOP
+    for(k in 1:num_trees_side2){ #COLUMN LOOP
+      veg[i,j,k]<- veg[i-1,j,k] + npp
+      rvar <- runif(n = 1, min = 0, max = 1)
+      if(rvar < mortality){  
+      veg[i,j,k] <-  0}
+    }
+  }
+}
+
+forest_average1 <- array(NA, dim = c(simulation_years))
+
+#THIS LOOPS THROUGH THE TIME-STEP
+for(i in 1:simulation_years){
+	#THIS CALCULATES THE MEAN OF THE ARRAY FOR EACH YEAR ‘i'
+	forest_average1[i] <- mean(veg[i, , ])
+}
+
+#2nd simulation
+
+veg[1, , ] <- 0
+mortality <- 0.02
+npp <- 300
+
+for(i in 2:simulation_years){ # YEAR LOOP
+  for(j in 1:num_trees_side1){ #ROW LOOP
+    for(k in 1:num_trees_side2){ #COLUMN LOOP
+      veg[i,j,k]<- veg[i-1,j,k] + npp
+      rvar <- runif(n = 1, min = 0, max = 1)
+      if(rvar < mortality){  
+      veg[i,j,k] <-  0}
+    }
+  }
+}
+
+forest_average2 <- array(NA, dim = c(simulation_years))
+
+#THIS LOOPS THROUGH THE TIME-STEP
+for(i in 1:simulation_years){
+	#THIS CALCULATES THE MEAN OF THE ARRAY FOR EACH YEAR ‘i'
+	forest_average2[i] <- mean(veg[i, , ])
+}
+
+#3rd simulation
+veg[1, , ] <- 0
+mortality <- 0.02
+npp <- 300
+
+for(i in 2:simulation_years){ # YEAR LOOP
+  for(j in 1:num_trees_side1){ #ROW LOOP
+    for(k in 1:num_trees_side2){ #COLUMN LOOP
+      veg[i,j,k]<- veg[i-1,j,k] + npp
+      rvar <- runif(n = 1, min = 0, max = 1)
+      if(rvar < mortality){  
+      veg[i,j,k] <-  0}
+    }
+  }
+}
+
+forest_average3 <- array(NA, dim = c(simulation_years))
+
+#THIS LOOPS THROUGH THE TIME-STEP
+for(i in 1:simulation_years){
+	#THIS CALCULATES THE MEAN OF THE ARRAY FOR EACH YEAR ‘i'
+	forest_average3[i] <- mean(veg[i, , ])
+}
 ```
 
 The following command allows you to view the simulation's spatial map.  Plug in different values for `year_index` to see the vegetation develop across space.
 
-```{r}
+```{r, eval = FALSE}
 #Note: once you ready for this section change `eval = FALSE` to `eval = TRUE` so that R evaluates the code below
-year_index <- 1
+year_index <- 150
 image(veg[year_index, , ]) 
 ```
 
@@ -243,10 +331,25 @@ image(veg[year_index, , ])
 
 Create a plot with year on x-axis and mean biomass for the three different 5x5 simulations on the y-axis (you should have three lines). Describe and explain the dynamics in the plot.  How predictable are the dynamics of a 5x5 forest compared to the small sized forest with only four trees?
 
+The predictability increases (the range of difference is smaller since there are more trees). 
 
-```{r}
+
+```{r, echo=FALSE}
 #Note: echo = FALSE turns off the printing of the code and only shows the plot
 #INSERT CODE FOR PLOT
+year <- seq(1, simulation_years ,1)
+
+#SIMPLE PLOTTING FUNCTION
+
+#Get the range from the three simulations
+ylimits <- range(c(forest_average1,forest_average2,forest_average3))
+
+#Plot first simulation
+plot(year, forest_average1, type = 'l', xlab = 'years', ylab = 'Mean biomass (g m-2)', ylim = ylimits)
+#Add the second simulation
+points(year, forest_average2, type= 'l' , col = 'red')
+#Add the third simulation
+points(year, forest_average3, type = 'l', col = 'blue')
 
 ```
 
@@ -257,26 +360,116 @@ Now simulate an even larger forest with 50 trees on a side.
 ```{r}
 num_trees_side1 <- 50
 num_trees_side2 <- 50
+veg <- array(NA, dim = c(simulation_years, num_trees_side1, num_trees_side2))
 ```
 
 **Question 7:** 
 
 Create a plot with year on x-axis and mean biomass for the three different 50x50 simulations on the y-axis (you should have three lines). Describe and explain the dynamics in the plot.  How predictable are the dynamics of a 50x50 forest compared to the forest with 5x5 trees?
 
+**Answer 7:**
+
+It's even more predictable! The averages are closer to each other. 
+
 ```{r}
+#1st simulation
+veg[1, , ] <- 0
+mortality <- 0.02
+npp <- 300
 
+for(i in 2:simulation_years){ # YEAR LOOP
+  for(j in 1:num_trees_side1){ #ROW LOOP
+    for(k in 1:num_trees_side2){ #COLUMN LOOP
+      veg[i,j,k]<- veg[i-1,j,k] + npp
+      rvar <- runif(n = 1, min = 0, max = 1)
+      if(rvar < mortality){  
+      veg[i,j,k] <-  0}
+    }
+  }
+}
 
+forest_average1 <- array(NA, dim = c(simulation_years))
+
+#THIS LOOPS THROUGH THE TIME-STEP
+for(i in 1:simulation_years){
+	#THIS CALCULATES THE MEAN OF THE ARRAY FOR EACH YEAR ‘i'
+	forest_average1[i] <- mean(veg[i, , ])
+}
+
+#2nd simulation
+
+veg[1, , ] <- 0
+mortality <- 0.02
+npp <- 300
+
+for(i in 2:simulation_years){ # YEAR LOOP
+  for(j in 1:num_trees_side1){ #ROW LOOP
+    for(k in 1:num_trees_side2){ #COLUMN LOOP
+      veg[i,j,k]<- veg[i-1,j,k] + npp
+      rvar <- runif(n = 1, min = 0, max = 1)
+      if(rvar < mortality){  
+      veg[i,j,k] <-  0}
+    }
+  }
+}
+
+forest_average2 <- array(NA, dim = c(simulation_years))
+
+#THIS LOOPS THROUGH THE TIME-STEP
+for(i in 1:simulation_years){
+	#THIS CALCULATES THE MEAN OF THE ARRAY FOR EACH YEAR ‘i'
+	forest_average2[i] <- mean(veg[i, , ])
+}
+
+#3rd simulation
+veg[1, , ] <- 0
+mortality <- 0.02
+npp <- 300
+
+for(i in 2:simulation_years){ # YEAR LOOP
+  for(j in 1:num_trees_side1){ #ROW LOOP
+    for(k in 1:num_trees_side2){ #COLUMN LOOP
+      veg[i,j,k]<- veg[i-1,j,k] + npp
+      rvar <- runif(n = 1, min = 0, max = 1)
+      if(rvar < mortality){  
+      veg[i,j,k] <-  0}
+    }
+  }
+}
+
+forest_average3 <- array(NA, dim = c(simulation_years))
+
+#THIS LOOPS THROUGH THE TIME-STEP
+for(i in 1:simulation_years){
+	#THIS CALCULATES THE MEAN OF THE ARRAY FOR EACH YEAR ‘i'
+	forest_average3[i] <- mean(veg[i, , ])
+}
+
+#Note: echo = FALSE turns off the printing of the code and only shows the plot
+#INSERT CODE FOR PLOT
+year <- seq(1, simulation_years ,1)
+
+#SIMPLE PLOTTING FUNCTION
+
+#Get the range from the three simulations
+ylimits <- range(c(forest_average1,forest_average2,forest_average3))
+
+#Plot first simulation
+plot(year, forest_average1, type = 'l', xlab = 'years', ylab = 'Mean biomass (g m-2)', ylim = ylimits)
+#Add the second simulation
+points(year, forest_average2, type= 'l' , col = 'red')
+#Add the third simulation
+points(year, forest_average3, type = 'l', col = 'blue')
 
 
 ```
-
-**Answer 7:** 
 
 **Question 8:**  
 
 How can the growth and death of individual trees be difficult to predict, but the biomass change over time for a more extensive forest be more predictable?
 
 **Answer 8:**
+Even though there is still randomization, because there are more trees taken into the average, that makes it more predictable. 
 
 ## Step 2:  Explore the drivers of biomass
 
@@ -285,6 +478,10 @@ How can the growth and death of individual trees be difficult to predict, but th
 Is the equilibrium biomass in the 50x50 forest more sensitive to a doubling of the growth rate or a halving of the mortality rate? Provide a table below with your results from the sensitivity study. (you may need to increase the number of years you simulate to ensure it reaches an equilibrium)
 
 **Answer 9:**
+I ran my models at 600 simulation years, and it's not consistently one or the other. For example:
+for 2x growth: 95.3%, 98.8%, 106.8%
+for 0.5 mortality: 101.7%, 100.4%, 101%
+So if you are looking at the equilibrium over the course of enough time, the forest is about equally sensitive to a doubling of the growth rate or a halving of the mortality rate. 
 
 ```{r}
 #EXAMPLE CODE TO BUILD A TABLE
@@ -298,27 +495,321 @@ sensitivity
 
 ```
 
+###baseline
+```{r}
+simulation_years <- 600
+num_trees_side1 <- 50
+num_trees_side2 <- 50
+veg <- array(NA, dim = c(simulation_years, num_trees_side1, num_trees_side2))
+
+#1st simulation
+veg[1, , ] <- 0
+mortality <- 0.02
+npp <- 300
+
+for(i in 2:simulation_years){ # YEAR LOOP
+  for(j in 1:num_trees_side1){ #ROW LOOP
+    for(k in 1:num_trees_side2){ #COLUMN LOOP
+      veg[i,j,k]<- veg[i-1,j,k] + npp
+      rvar <- runif(n = 1, min = 0, max = 1)
+      if(rvar < mortality){  
+      veg[i,j,k] <-  0}
+    }
+  }
+}
+
+forest_average1 <- array(NA, dim = c(simulation_years))
+
+#THIS LOOPS THROUGH THE TIME-STEP
+for(i in 1:simulation_years){
+	#THIS CALCULATES THE MEAN OF THE ARRAY FOR EACH YEAR ‘i'
+	forest_average1[i] <- mean(veg[i, , ])
+}
+
+#2nd simulation
+
+veg[1, , ] <- 0
+mortality <- 0.02
+npp <- 300
+
+for(i in 2:simulation_years){ # YEAR LOOP
+  for(j in 1:num_trees_side1){ #ROW LOOP
+    for(k in 1:num_trees_side2){ #COLUMN LOOP
+      veg[i,j,k]<- veg[i-1,j,k] + npp
+      rvar <- runif(n = 1, min = 0, max = 1)
+      if(rvar < mortality){  
+      veg[i,j,k] <-  0}
+    }
+  }
+}
+
+forest_average2 <- array(NA, dim = c(simulation_years))
+
+#THIS LOOPS THROUGH THE TIME-STEP
+for(i in 1:simulation_years){
+	#THIS CALCULATES THE MEAN OF THE ARRAY FOR EACH YEAR ‘i'
+	forest_average2[i] <- mean(veg[i, , ])
+}
+
+#3rd simulation
+veg[1, , ] <- 0
+mortality <- 0.02
+npp <- 300
+
+for(i in 2:simulation_years){ # YEAR LOOP
+  for(j in 1:num_trees_side1){ #ROW LOOP
+    for(k in 1:num_trees_side2){ #COLUMN LOOP
+      veg[i,j,k]<- veg[i-1,j,k] + npp
+      rvar <- runif(n = 1, min = 0, max = 1)
+      if(rvar < mortality){  
+      veg[i,j,k] <-  0}
+    }
+  }
+}
+
+forest_average3 <- array(NA, dim = c(simulation_years))
+
+#THIS LOOPS THROUGH THE TIME-STEP
+for(i in 1:simulation_years){
+	#THIS CALCULATES THE MEAN OF THE ARRAY FOR EACH YEAR ‘i'
+	forest_average3[i] <- mean(veg[i, , ])
+}
+
+#Note: echo = FALSE turns off the printing of the code and only shows the plot
+#INSERT CODE FOR PLOT
+year <- seq(1, simulation_years ,1)
+
+#SIMPLE PLOTTING FUNCTION
+
+#Get the range from the three simulations
+ylimits <- range(c(forest_average1,forest_average2,forest_average3))
+
+#Plot first simulation
+plot(year, forest_average1, type = 'l', xlab = 'years', ylab = 'Mean biomass (g m-2)', ylim = ylimits)
+#Add the second simulation
+points(year, forest_average2, type= 'l' , col = 'red')
+#Add the third simulation
+points(year, forest_average3, type = 'l', col = 'blue')
+
+```
+
+
+###2x growth
+```{r}
+#1st simulation
+veg[1, , ] <- 0
+mortality <- 0.02
+npp <- 600
+
+for(i in 2:simulation_years){ # YEAR LOOP
+  for(j in 1:num_trees_side1){ #ROW LOOP
+    for(k in 1:num_trees_side2){ #COLUMN LOOP
+      veg[i,j,k]<- veg[i-1,j,k] + npp
+      rvar <- runif(n = 1, min = 0, max = 1)
+      if(rvar < mortality){  
+      veg[i,j,k] <-  0}
+    }
+  }
+}
+
+forest_average1_2x <- array(NA, dim = c(simulation_years))
+
+#THIS LOOPS THROUGH THE TIME-STEP
+for(i in 1:simulation_years){
+	#THIS CALCULATES THE MEAN OF THE ARRAY FOR EACH YEAR ‘i'
+	forest_average1_2x[i] <- mean(veg[i, , ])
+}
+
+#2nd simulation
+
+veg[1, , ] <- 0
+mortality <- 0.02
+npp <- 600
+
+for(i in 2:simulation_years){ # YEAR LOOP
+  for(j in 1:num_trees_side1){ #ROW LOOP
+    for(k in 1:num_trees_side2){ #COLUMN LOOP
+      veg[i,j,k]<- veg[i-1,j,k] + npp
+      rvar <- runif(n = 1, min = 0, max = 1)
+      if(rvar < mortality){  
+      veg[i,j,k] <-  0}
+    }
+  }
+}
+
+forest_average2_2x <- array(NA, dim = c(simulation_years))
+
+#THIS LOOPS THROUGH THE TIME-STEP
+for(i in 1:simulation_years){
+	#THIS CALCULATES THE MEAN OF THE ARRAY FOR EACH YEAR ‘i'
+	forest_average2_2x[i] <- mean(veg[i, , ])
+}
+
+#3rd simulation
+veg[1, , ] <- 0
+mortality <- 0.02
+npp <- 600
+
+for(i in 2:simulation_years){ # YEAR LOOP
+  for(j in 1:num_trees_side1){ #ROW LOOP
+    for(k in 1:num_trees_side2){ #COLUMN LOOP
+      veg[i,j,k]<- veg[i-1,j,k] + npp
+      rvar <- runif(n = 1, min = 0, max = 1)
+      if(rvar < mortality){  
+      veg[i,j,k] <-  0}
+    }
+  }
+}
+
+forest_average3_2x <- array(NA, dim = c(simulation_years))
+
+#THIS LOOPS THROUGH THE TIME-STEP
+for(i in 1:simulation_years){
+	#THIS CALCULATES THE MEAN OF THE ARRAY FOR EACH YEAR ‘i'
+	forest_average3_2x[i] <- mean(veg[i, , ])
+}
+
+#Note: echo = FALSE turns off the printing of the code and only shows the plot
+#INSERT CODE FOR PLOT
+year <- seq(1, simulation_years ,1)
+
+#SIMPLE PLOTTING FUNCTION
+
+#Get the range from the three simulations
+ylimits <- range(c(forest_average1_2x,forest_average2_2x,forest_average3_2x))
+
+#Plot first simulation
+plot(year, forest_average1_2x, type = 'l', xlab = 'years', ylab = 'Mean biomass (g m-2)', ylim = ylimits)
+#Add the second simulation
+points(year, forest_average2_2x, type= 'l' , col = 'red')
+#Add the third simulation
+points(year, forest_average3_2x, type = 'l', col = 'blue')
+
+```
+
+###1perc mort###
+
+```{r}
+veg[1, , ] <- 0
+mortality <- 0.01
+npp <- 300
+
+for(i in 2:simulation_years){ # YEAR LOOP
+  for(j in 1:num_trees_side1){ #ROW LOOP
+    for(k in 1:num_trees_side2){ #COLUMN LOOP
+      veg[i,j,k]<- veg[i-1,j,k] + npp
+      rvar <- runif(n = 1, min = 0, max = 1)
+      if(rvar < mortality){  
+      veg[i,j,k] <-  0}
+    }
+  }
+}
+
+forest_average1_1percm <- array(NA, dim = c(simulation_years))
+
+#THIS LOOPS THROUGH THE TIME-STEP
+for(i in 1:simulation_years){
+	#THIS CALCULATES THE MEAN OF THE ARRAY FOR EACH YEAR ‘i'
+	forest_average1_1percm[i] <- mean(veg[i, , ])
+}
+
+#2nd simulation
+
+veg[1, , ] <- 0
+mortality <- 0.01
+npp <- 300
+
+for(i in 2:simulation_years){ # YEAR LOOP
+  for(j in 1:num_trees_side1){ #ROW LOOP
+    for(k in 1:num_trees_side2){ #COLUMN LOOP
+      veg[i,j,k]<- veg[i-1,j,k] + npp
+      rvar <- runif(n = 1, min = 0, max = 1)
+      if(rvar < mortality){  
+      veg[i,j,k] <-  0}
+    }
+  }
+}
+
+forest_average2_1percm <- array(NA, dim = c(simulation_years))
+
+#THIS LOOPS THROUGH THE TIME-STEP
+for(i in 1:simulation_years){
+	#THIS CALCULATES THE MEAN OF THE ARRAY FOR EACH YEAR ‘i'
+	forest_average2_1percm[i] <- mean(veg[i, , ])
+}
+
+#3rd simulation
+veg[1, , ] <- 0
+mortality <- 0.01
+npp <- 300
+
+for(i in 2:simulation_years){ # YEAR LOOP
+  for(j in 1:num_trees_side1){ #ROW LOOP
+    for(k in 1:num_trees_side2){ #COLUMN LOOP
+      veg[i,j,k]<- veg[i-1,j,k] + npp
+      rvar <- runif(n = 1, min = 0, max = 1)
+      if(rvar < mortality){  
+      veg[i,j,k] <-  0}
+    }
+  }
+}
+
+forest_average3_1percm <- array(NA, dim = c(simulation_years))
+
+#THIS LOOPS THROUGH THE TIME-STEP
+for(i in 1:simulation_years){
+	#THIS CALCULATES THE MEAN OF THE ARRAY FOR EACH YEAR ‘i'
+	forest_average3_1percm[i] <- mean(veg[i, , ])
+}
+
+#Note: echo = FALSE turns off the printing of the code and only shows the plot
+#INSERT CODE FOR PLOT
+year <- seq(1, simulation_years ,1)
+
+#SIMPLE PLOTTING FUNCTION
+
+#Get the range from the three simulations
+ylimits <- range(c(forest_average1_2x,forest_average2_2x,forest_average3_2x))
+
+#Plot first simulation
+plot(year, forest_average1_1percm, type = 'l', xlab = 'years', ylab = 'Mean biomass (g m-2)', ylim = ylimits)
+#Add the second simulation
+points(year, forest_average2_1percm, type= 'l' , col = 'red')
+#Add the third simulation
+points(year, forest_average3_1percm, type = 'l', col = 'blue')
+
+```
+
+
+
 You can use the indexing of the array `sensitivity` to fill out the table. For example, `senstivity[1,1]` is the growth parameter for the baseline simulation (300), which is the simulation that you have already run (`npp` and `mort` from Question 4).   `sensitivity[2,4]` is the % change for the 2x Growth simulation.
 
 ```{r}
 #Code
 #Baseline simulation
-sensitivity[1,1] <- 300#NPP USED
-sensitivity[1,2] <- 0.02#Mortality used
-sensitivity[1,3] <- #Equilibrium biomass change this
-sensitivity[1,4] <- # % change
+forecast_average_baseline <- mean(forest_average1[simulation_years],forest_average2[simulation_years],forest_average3[simulation_years])
+
+sensitivity[1,1] <- 300 #NPP USED
+sensitivity[1,2] <- 0.02 #Mortality used
+sensitivity[1,3] <- forecast_average_baseline #Equilibrium biomass
+sensitivity[1,4] <- NA # % change
+
+forecast_average_2xgrowth <- mean(forest_average1_2x[simulation_years],forest_average2_2x[simulation_years],forest_average3_2x[simulation_years])
 
 #2xGrowth simulation
-sensitivity[2,1] <- 
-sensitivity[2,2] <-
-sensitivity[2,3] <- 100*(forecast_average_2xgrowth[simulation_years]- forescast_average_baseline[simulation_years]/forecast_average_baseline[simulation_years])
-sensitivity[2,4] <-
+sensitivity[2,1] <- 600
+sensitivity[2,2] <- 0.02
+sensitivity[2,3] <- forecast_average_2xgrowth
+sensitivity[2,4] <- 100 * ((forecast_average_2xgrowth - forecast_average_baseline) / forecast_average_baseline)
+
   
+forecast_average_1percm <- mean(forest_average1_1percm[simulation_years],forest_average2_1percm[simulation_years],forest_average3_1percm[simulation_years])
+
 #0.5 mortality simulation
-sensitivity[3,1] <- 
-sensitivity[3,2] <-
-sensitivity[3,3] <-
-sensitivity[3,4] <-
+sensitivity[3,1] <- 300
+sensitivity[3,2] <- 0.01
+sensitivity[3,3] <-forecast_average_1percm
+sensitivity[3,4] <-100*((forecast_average_1percm- forecast_average_baseline)/forecast_average_baseline)
 
 ```
 
@@ -333,7 +824,7 @@ kable(sensitivity)
 **Question 10:** All models are wrong, some models are useful (-George Box).  What are key assumptions of our simple forest vegetation model?  How is our simple forest model useful?
 
 **Answer 10:**
-
+We are assuming that the probability of an individual tree dying in a year doesn't change with age. We are also assuming that the growth rate remains the same and that surrounding trees don't influence the mortality rate or the growth rate of an individual tree. We are also assuming that across time in general (not just looking at the age of the tree) these rates don't change (ignoring key factors such as the effects of climate change and anthropogenic activity).
 
 
 
