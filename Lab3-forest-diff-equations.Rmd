@@ -213,12 +213,12 @@ Tip: Your solution will only have one for-loop.  You will NOT have a different l
 
 ```{r}
 #insert set of differential equations here that are contained in the for loop (see above)
-simulation_years <- 1000  #total number of years you want to simulate
+simulation_years <- 1500  #total number of years you want to simulate
 veg <- array(NA, dim = c(simulation_years))  #creating the array to store the yearly vegetation biomass
 soil <- array(NA, dim = c(simulation_years))
 
 
-veg[1] <- 0  #initializing the vegetation biomass in year 1 to be 1
+veg[1] <- 0  #initializing the vegetation biomass in year 1 to be 0
 soil[1] <- 0
 
 npp <- 300  #growth rate
@@ -249,7 +249,7 @@ equilibrium <- veg[1000]+soil[1000] #equilibrium carbon stock
 What is the equilibrium carbon stock of the entire ecosystem (vegetation + soil) using the following parameter values: NPP = 300, u = 0.02, and k = 0.005; Initial vegetation = 0 and Initial soil = 0)?
 
 **Answer 9:**
-0.005
+74465
 
 **Question 10:** 
 
