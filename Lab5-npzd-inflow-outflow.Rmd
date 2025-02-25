@@ -1,5 +1,6 @@
 ---
 title: "Ecosystem Dynamics Lab 5"
+author: "Maria Popescu"
 output:
   html_document: default
 ---
@@ -237,14 +238,13 @@ you've already done a sensitivity study for another lab.
 
 **Answer 5:**
 
-Doubling the grazing rate significantly changes the results way more than doubling anything else. 
-
+If you change each parameter by multiplying it by 1.15 and run the simulation 100 years, you will notice that the change in uptake makes the most significant difference. Phytoplankton mmol N/m³ reaches equilibrium at less than 2 for every other simulation, but for the simulation where uptake is changed, phytoplankton DIN actually increases very quickly.   
 
 ```{r}
-#I'm just going to double everything and see which makes the most significant different
+#multiply everything by 1.15 to increase by 15%
 
 uptake_changed <- c(
-  2,  #maxUptake INSERT UNITS
+  1.15,  #maxUptake INSERT UNITS
   120,  #kspar INSERT UNITS
   0.5,  #ksdin INSERT UNITS
   1.0,  #maxGrazing INSERT UNITS
@@ -261,7 +261,7 @@ grazing_changed <- c(
   1.0,  #maxUptake INSERT UNITS
   120,  #kspar INSERT UNITS
   0.5,  #ksdin INSERT UNITS
-  2,  #maxGrazing INSERT UNITS
+  1.15,  #maxGrazing INSERT UNITS
   1.0,    #ksphyto INSERT UNITS
   0.3,  #pFaeces INSERT UNITS
   0.1,  #excretionRate INSERT UNITS
@@ -273,7 +273,7 @@ grazing_changed <- c(
 
 kspar_changed<- c(
   1.0,  #maxUptake INSERT UNITS
-  240,  #kspar INSERT UNITS
+  120 * 1.15,  #kspar INSERT UNITS
   0.5,  #ksdin INSERT UNITS
   1.0,  #maxGrazing INSERT UNITS
   1.0,    #ksphyto INSERT UNITS
@@ -288,7 +288,7 @@ kspar_changed<- c(
 ksdin_changed<- c(
   1.0,  #maxUptake INSERT UNITS
   120,  #kspar INSERT UNITS
-  1,  #ksdin INSERT UNITS
+  .5 * 1.15,  #ksdin INSERT UNITS
   1.0,  #maxGrazing INSERT UNITS
   1.0,    #ksphyto INSERT UNITS
   0.3,  #pFaeces INSERT UNITS
@@ -300,10 +300,11 @@ ksdin_changed<- c(
   0.00139) #output 1/720 (multiply this by DIN concentration) not sure if this is correct
 
 
-simulation_time <- 365 * 10
+simulation_time <- 365 * 100
 dt <- 1
 times <- seq(1, simulation_time, by = dt)
 
+baseline_output <-  ode(y = yini, times = times, func = NPZD_model, parms = parms, method = "ode45")
 uptake_changed_output <- ode(y = yini, times = times, func = NPZD_model, parms = uptake_changed, method = "ode45")
 grazing_changed_output <- ode(y = yini, times = times, func = NPZD_model, parms = grazing_changed, method = "ode45")
 kspar_changed_output <- ode(y = yini, times = times, func = NPZD_model, parms = kspar_changed, method = "ode45")
@@ -314,6 +315,7 @@ ksdin_changed_changed_output <- ode(y = yini, times = times, func = NPZD_model, 
 
 #Plot the model output
 #First convert output to a data frame
+baseline_output <- as.data.frame(baseline_output)
 uptake_changed_output <- as.data.frame(uptake_changed_output)
 grazing_changed_output <- as.data.frame(grazing_changed_output)
 kspar_changed_output <- as.data.frame(kspar_changed_output)
@@ -323,11 +325,11 @@ ksdin_changed_changed_output <- as.data.frame(ksdin_changed_changed_output)
 
 
 par(mfrow = c(2, 3))
-plot(times, output$PHYTO, xlab="time (days)", ylab ="mmolN/m3", main = "baseline", type = "l")
-plot(times, uptake_changed_output$PHYTO, xlab="time (days)", ylab ="mmolN/m3", main = "uptake changed", type = "l")
-plot(times, grazing_changed_output$PHYTO, xlab="time (days)", ylab ="mmolN/m3", main = "grazing changed", type = "l")
-plot(times, kspar_changed_output$PHYTO, xlab="time (days)", ylab ="mmolN/m3", main = "kspar changed", type = "l")
-plot(times, ksdin_changed_changed_output$PHYTO, xlab="time (days)", ylab ="mmolN/m3", main = "ksdin changed", type = "l")
+plot(times, baseline_output$PHYTO, xlab="time (days)", ylab ="mmolN/m3", ylim = c(0,6),main = "baseline", type = "l")
+plot(times, uptake_changed_output$PHYTO, xlab="time (days)", ylab ="mmolN/m3", ylim = c(0,6), main = "uptake changed", type = "l")
+plot(times, grazing_changed_output$PHYTO, xlab="time (days)", ylab ="mmolN/m3",ylim = c(0,6),  main = "grazing changed", type = "l")
+plot(times, kspar_changed_output$PHYTO, xlab="time (days)", ylab ="mmolN/m3",ylim = c(0,6),  main = "kspar changed", type = "l")
+plot(times, ksdin_changed_changed_output$PHYTO, xlab="time (days)", ylab ="mmolN/m3",ylim = c(0,6),  main = "ksdin changed", type = "l")
 
 ```
 
