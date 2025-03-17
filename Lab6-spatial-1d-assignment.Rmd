@@ -1,5 +1,6 @@
 ---
 title: "Ecosystem Dynamics Lab 6"
+author: "Maria Popescu"
 output:
   html_document: default
 ---
@@ -7,6 +8,7 @@ output:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
+NOTE: Sophia sent notes from the class that I missed via a markdown which I kept some of the comments here because they are helpful for my understanding and I don't want to delete them!
 
 ## Goals:
 
@@ -24,9 +26,13 @@ Provide an example model application when you would potentially need the followi
 **Answer 1:**
 
 a)	0-D
+NPZD model doesn't account for space and is 0 dimensional
 b)	1-D
+In a river where concentrations are only modeled as a function of position along the length axis only
 c)	2-D
+In a forest where you are only worried about a matrix or plane with two directions. positions are characterized by coordinates in two directions. 
 d)	3-D
+three coordinate positions are at play. so for example modeling phytoplankton distribution in a whole lake in every direction. 
 
 **Question 2:**  
 
@@ -34,25 +40,323 @@ Describe the concept of flux divergence (see text).
 
 **Answer 2:**
 
+The change of the flux with space x. It tells us how the concentration of something changes over time due to variation in fluxes (in and out).
+
 **Question 3:** 
 
 What is the difference between advection and diffusion?
 
 **Answer 3:**
+advection is unidirectional and is applied uniformly to individuals at a certain point and time. For example gravity or the flow of a river in one direction. Diffusion is movement due to random motion from high to low concentration. It can go in many directions and is independent of advection so it can move with or against advection. It is random movement that reduces concentration gradients.  
 
 **Question 4:**  
 
 Use the code that we covered in class to simulate the lake phytoplankton population for three years using 3 boxes instead of 48 boxes in the vertical dimension. How is your answer sensitive to the number of boxes that you use?  (think about how the idea of the number of vertical boxes compares to the idea of time steps when solving differential equations)
 
 **Answer 4:**
+See code below. With fewer boxes, your resolution isn't as fine so certain processes can be over and underestimated since the process is averaged over a greater amount of depth. The more boxes there are the greater the resolution and the more accurate the model will be. 
+
+```{r}
+library(deSolve)
+
+#as a function 
+phyto_depth_model <- function(t, state, parms){
+  
+  PHYTO <- state
+
+  #Unpack parameters
+  u <- parms[1]
+  maxUptake <- parms[2]
+  light_extinction <- parms[3]
+  ksPAR <- parms[4]
+  mortalityRate <- parms[5]
+  D <- parms[6]
+  
+  phyto_flux_top <- parms[7]
+  top_diffusion_gradient <- parms[8] 
+  bottom_diffusion_gradient <- parms[9] #phyto diffuse in and our of sediments needs to be specified so there is not constant diffusion until equilibrum#
+  
+  #Physical description 
+  area <- parms[10]
+  lake_depth <- parms[11]
+  numboxes <- parms[12] 
+  
+  #Calculate the thickness of each layer
+  delx <- lake_depth / numboxes #
+  
+  #Calculate the environment (note that this depends on time)
+  PAR_surface   <- 0.5 * (540 + 440 * sin(2 * pi * t / 365 - 1.4))
+  
+  layer_mid_depths <- seq(delx/2, lake_depth-delx/2, by = delx) 
+  layer_PAR <- PAR_surface * exp(-light_extinction * layer_mid_depths)
+  C_Uptake <- maxUptake *  PHYTO * (layer_PAR / (layer_PAR + ksPAR)) #reaction kspar is a value applied with a vector for uptake
+  Mortality <- mortalityRate * PHYTO^2 #mortality
+  reaction <- C_Uptake - Mortality #reaction
+  
+  #Diffusion calculation
+  gradient_middle_boxes <- diff(PHYTO)/delx #diff phyto is partial derivative C where C s concentration#
+  gradient <- c(top_diffusion_gradient, gradient_middle_boxes, bottom_diffusion_gradient)#this extends the vector for gradient#
+  diffusion_flux <- area * -D * gradient# partialderivatveC/partialderivativeX is the gradient#
+  diffusion <- -(1/area) * (diff(diffusion_flux) / delx) #that is partial derivative of diffusion flux which is partial derivative(-DApartialC/patrialdelx) all over delx with the partial being partial derivatives#
+  
+  # Advection calculation advection fluc the first thing oyu want to calculate is u*A*C is advection_flux <- c(phyto_flux_top, u * PHYTO) * area, c(0=fluxtop,u*phyto*A) you need a boundary condition at the start of the advection movement but you don't need one at the other end if you put a 0 at the bottom of the bodel it makes all the aterial advecting down simply pool at the bottom
+  
+  #if u_depth is a function you could bake to have like as depth changes as a funciton of u lie what it is at the top it returns the advection for that layer and that makes an internally calculated parameter that changes with depth bc conc changes with depth and rate per concentration also changes with depth, this is not what we are doing here but it is an option
+  advection_flux <- c(phyto_flux_top, u * PHYTO) * area
+  advection <- -(1/area) * (diff(advection_flux) / delx)#diff is the partial derivative of u*A*c how much is the advective flux changing if top is 1 and bottom is 1 change is 0. difference between top and bottom is net influence of advection devided by delx 
+  
+  # Net change for each box (this a vector) #net change for each box depends on the number of boxes#
+  dPHYTO_dt <- advection + diffusion + reaction
+#if you had the extra state it is dzoo_dt<-advection_zoo+diffusion_zoo+reaciton_zoo and would have to solve all the diff eq for the added state#
+  
+  #This returns the VECTOR of derivatives for each layer box our old school euler method can solve this because now we have a vector of dphyto like the vector is dphyto1/dt,dphyto2/d= phyto2[i-1++ the other derivatives for each onet,dphyto3/dt
+  list(c(dPHYTO_dt)) 
+ #takes big thing and breaks it into derivatves and time chunks if you add list(c(dphyto_dt,dzoo_dt))
+}
+```
+
+run function
+```{r}
+#Parameters
+#Currency = mmolC/m3
+#Time scale = day
+parms <- c(
+  #Parameters
+  0.2, # vp: meters/day, Phyto sinking rate
+  2, #maxUptake: 1/day, Max Phyto growth rate    #
+  0.9,  #light_extinction: unitless, Light extinction rate
+  140,  #ksPAR units of light, Light half saturation
+  0.5, #mortalityRate: 1/day, mortality of plankton
+  0.01, # D: m2/day, Diffusion rate constant
+  #Boundary conditions
+  0, # phyto_flux_top (BOUNDRY CONDITION): mmolC/m2/d  flux at the upper boundary (Phyto input from outside the lake)
+  0, #top_diffusion_gradient (BOUNDRY CONDITION): mmolC/m, concentraton gradient at top 
+  0, #bottom_diffusion_gradient (BOUNDRY CONDITION): mmolC/m, concentration gradient at bottom
+  #Physical descriptions of the lake
+  1, #horizontal_area: horizontal area of lake m2
+  12, #lake_depth: depth of lake (m)
+  3)  #numboxes: number of boxes simulated
+
+numboxes <- parms[12]
+
+#First set all layers equal to zero you need 48 initial conditions bc each box needs an initial condition. increase # boxes increase # of initial conditions needed. needs to be set to something the model would crash
+yini <- rep(0, numboxes)
+
+#Then initialize the layers where the Phytos are starting
+yini[1] <- 3 
+
+simulation_time <- 2 * 365 #DAYS
+dt <- 1
+times <- seq(1, simulation_time, by = dt)
+
+output <- ode(y = yini, 
+              times = times, 
+              func = phyto_depth_model, 
+              parms = parms)
+
+#visualize heatmap
+
+#Initial conditions
+area <- parms[10]
+lake_depth <- parms[11]
+numboxes <- parms[12]
+delx <- lake_depth / numboxes
+output <- as.data.frame(output)
+
+#Rename the columns to match the depths
+depths <- seq(from = delx / 2, by = delx, length.out = numboxes)  # sequence, 1 m intervals
+names(output) <- c("time", depths)
+
+#Grab the columns that correspond to the different depths
+PHYTO <- output[, 2:(numboxes + 1)]
+
+# temporal-spatial plot of the concentrations
+par(oma = c(0, 0, 3, 0))   # set margin size (oma) so that the title is included
+col <- topo.colors
+
+filled.contour(x = times, 
+               y = depths, 
+               z = as.matrix(PHYTO), 
+               color = col, 
+               ylim = c(lake_depth, 0), 
+               zlim = range(c(PHYTO)),
+               xlab = "time, days", 
+               ylab = "Depth, m", 
+               main = "Concentration, mmolC/m3")
+
+mtext(outer = TRUE, side = 3, "Vertical phytoplankton model", cex = 1.5)
+
+#visualize total phytos
+phyto_total <- rowMeans(PHYTO) * lake_depth
+plot(times, phyto_total, type = "l", xlab = "days", ylab = "Total Phytos (mmolC/m2)", main = "3 boxes phytoplankton")
+```
+```{r}
+#Parameters
+#Currency = mmolC/m3
+#Time scale = day
+parms <- c(
+  #Parameters
+  0.2, # vp: meters/day, Phyto sinking rate
+  2, #maxUptake: 1/day, Max Phyto growth rate    #
+  0.9,  #light_extinction: unitless, Light extinction rate
+  140,  #ksPAR units of light, Light half saturation
+  0.5, #mortalityRate: 1/day, mortality of plankton
+  0.01, # D: m2/day, Diffusion rate constant
+  #Boundary conditions
+  0, # phyto_flux_top (BOUNDRY CONDITION): mmolC/m2/d  flux at the upper boundary (Phyto input from outside the lake)
+  0, #top_diffusion_gradient (BOUNDRY CONDITION): mmolC/m, concentraton gradient at top 
+  0, #bottom_diffusion_gradient (BOUNDRY CONDITION): mmolC/m, concentration gradient at bottom
+  #Physical descriptions of the lake
+  1, #horizontal_area: horizontal area of lake m2
+  12, #lake_depth: depth of lake (m)
+  48)  #numboxes: number of boxes simulated
+
+numboxes <- parms[12]
+
+#First set all layers equal to zero you need 48 initial conditions bc each box needs an initial condition. increase # boxes increase # of initial conditions needed. needs to be set to something the model would crash
+yini <- rep(0, numboxes)
+
+#Then initialize the layers where the Phytos are starting
+yini[1] <- 3 
+
+#Use DeSolve to integrate this code doesnt care that we are solving a partial diffeq, it cares that we are returning 48 derivatives each time step. reports back how these derivatives change over time this is the numerical solution
+simulation_time <- 2 * 365 #DAYS
+dt <- 1
+times <- seq(1, simulation_time, by = dt)
+
+output <- ode(y = yini, 
+              times = times, 
+              func = phyto_depth_model, 
+              parms = parms)
+
+#visualize heatmap
+
+#Note that the first column in time and the other columns are the different depths that the derivative are calculated
+#Initial conditions
+area <- parms[10]
+lake_depth <- parms[11]
+numboxes <- parms[12]
+delx <- lake_depth / numboxes
+output <- as.data.frame(output)
+
+#Rename the columns to match the depths
+depths <- seq(from = delx / 2, by = delx, length.out = numboxes)  # sequence, 1 m intervals
+names(output) <- c("time", depths)
+
+#Grab the columns that correspond to the different depths
+PHYTO <- output[, 2:(numboxes + 1)]
+
+# temporal-spatial plot of the concentrations
+par(oma = c(0, 0, 3, 0))   # set margin size (oma) so that the title is included
+col <- topo.colors
+
+filled.contour(x = times, 
+               y = depths, 
+               z = as.matrix(PHYTO), 
+               color = col, 
+               ylim = c(lake_depth, 0), 
+               zlim = range(c(PHYTO)),
+               xlab = "time, days", 
+               ylab = "Depth, m", 
+               main = "Concentration, mmolC/m3")
+
+mtext(outer = TRUE, side = 3, "Vertical phytoplankton model", cex = 1.5)
+
+#visualize total phytos
+phyto_total <- rowMeans(PHYTO) * lake_depth
+plot(times, phyto_total, type = "l", xlab = "days", ylab = "boxes Total Phytos (mmolC/m2)", main = "48 boxes phytoplankton")
+```
+```
 
 **Question 5:** 
 
 To control water quality, the amount of sediment coming into the lake has been reduced.  Decreasing the sediment increases the light penetration, which decreases the light extinction coefficient from 0.9 to 0.1.  Using your model, plot and describe how this alters the phytoplankton in the water column.  Describe the reasons for the model behavior. **Be sure to use 48 vertical boxes**
 
 **Answer 5:**
+
+The following code results in an increase of total phytoplankton, throughout the water column and also allows them to grow at deeper depths. This makes sense, because if the light extinction rate decreases, that means that more light can reach deeper depths. Light is important for phytoplankton vertical distribution, because it is necessary for them to photosynthesize. 
+
 ```{r}
-#INSERT CODE TO SOLVE
+#Parameters
+#Currency = mmolC/m3
+#Time scale = day
+parms <- c(
+  #Parameters
+  0.2, # vp: meters/day, Phyto sinking rate
+  2, #maxUptake: 1/day, Max Phyto growth rate    #
+  0.1,  #light_extinction: unitless, Light extinction rate
+  140,  #ksPAR units of light, Light half saturation
+  0.5, #mortalityRate: 1/day, mortality of plankton
+  0.01, # D: m2/day, Diffusion rate constant
+  #Boundary conditions
+  0, # phyto_flux_top (BOUNDRY CONDITION): mmolC/m2/d  flux at the upper boundary (Phyto input from outside the lake)
+  0, #top_diffusion_gradient (BOUNDRY CONDITION): mmolC/m, concentraton gradient at top 
+  0, #bottom_diffusion_gradient (BOUNDRY CONDITION): mmolC/m, concentration gradient at bottom
+  #Physical descriptions of the lake
+  1, #horizontal_area: horizontal area of lake m2
+  12, #lake_depth: depth of lake (m)
+  48)  #numboxes: number of boxes simulated
+
+numboxes <- parms[12]
+
+#First set all layers equal to zero you need 48 initial conditions bc each box needs an initial condition. increase # boxes increase # of initial conditions needed. needs to be set to something the model would crash
+yini <- rep(0, numboxes)
+
+#Then initialize the layers where the Phytos are starting
+yini[1] <- 3 #initial conditions is we put 3 phytos in the top box other boxes are zero bc we put 0 in the 48 boxes and hten overwrite the one that is at one with th evalue 3
+
+library(deSolve)
+
+#Use DeSolve to integrate this code doesnt care that we are solving a partial diffeq, it cares that we are returning 48 derivatives each time step. reports back how these derivatives change over time this is the numerical solution
+simulation_time <- 2 * 365 #DAYS
+dt <- 1
+times <- seq(1, simulation_time, by = dt)
+
+output <- ode(y = yini, 
+              times = times, 
+              func = phyto_depth_model, 
+              parms = parms)
+```
+
+```{r}
+#visualize heatmap
+
+#Note that the first column in time and the other columns are the different depths that the derivative are calculated
+#Initial conditions
+area <- parms[10]
+lake_depth <- parms[11]
+numboxes <- parms[12]
+delx <- lake_depth / numboxes
+output <- as.data.frame(output)
+
+#Rename the columns to match the depths
+depths <- seq(from = delx / 2, by = delx, length.out = numboxes)  # sequence, 1 m intervals
+names(output) <- c("time", depths)
+
+#Grab the columns that correspond to the different depths
+PHYTO <- output[, 2:(numboxes + 1)]
+
+# temporal-spatial plot of the concentrations
+par(oma = c(0, 0, 3, 0))   # set margin size (oma) so that the title is included
+col <- topo.colors
+
+filled.contour(x = times, 
+               y = depths, 
+               z = as.matrix(PHYTO), 
+               color = col, 
+               ylim = c(lake_depth, 0), 
+               zlim = range(c(PHYTO)),
+               xlab = "time, days", 
+               ylab = "Depth, m", 
+               main = "Concentration, mmolC/m3")
+
+mtext(outer = TRUE, side = 3, "Vertical phytoplankton model", cex = 1.5)
+```
+
+```{r}
+#visualize total phytos
+phyto_total <- rowMeans(PHYTO) * lake_depth
+plot(times, phyto_total, type = "l", xlab = "days", ylab = "Total Phytos (mmolC/m2)")
 ```
 
 ## Part 2: Ocean carbon burial
@@ -78,10 +382,67 @@ Run the model for a sufficiently long time so that the concentrations of dead or
 Provide the code and solve your model.
 
 **Answer 6:**
-```{r}
-#INSERT CODE TO SOLVE AND PLOT ANSWER
+
+```{R}
+# Parameters
+parms <- c(
+  u = 50,             # DOM sinking rate (m/day)
+  degradation = 0.2,  # Degradation rate (1/day)
+  DOM_flux_top = 100, # Flux at the top boundary (mmol C m-2 day-1)
+  depth = 400,        # Depth of aphotic zone (m)
+  numboxes = 48       # Number of depth layers
+)
+
+# Extract parameters correctly
+numboxes <- parms["numboxes"]
+depth <- parms["depth"]
+
+# Initial conditions: All boxes start at 0
+yini <- rep(0, numboxes)  
+
+# Simulation parameters
+simulation_time <- 2 * 365  # Days
+dt <- 1
+times <- seq(1, simulation_time, by = dt)
+
+# Model function
+organic_matter_model <- function(t, state, parms) {
+  
+  # Unpack states
+  DOM <- state
+  
+  # Unpack parameters
+  u <- parms["u"]
+  degradation <- parms["degradation"]
+  DOM_flux_top <- parms["DOM_flux_top"]
+  depth <- parms["depth"]
+  numboxes <- parms["numboxes"]
+  
+  # Calculate layer thickness
+  delx <- depth / numboxes
+  
+  # Degradation (loss of DOM)
+  degradation_loss <- degradation * DOM
+  
+  # Advection (Sinking of DOM)
+  advection_flux <- c(DOM_flux_top, u * DOM)  # Add top flux
+  advection <- -(diff(advection_flux) / delx)
+  
+  # Net change per layer (NO Diffusion)
+  dDOM_dt <- advection - degradation_loss  
+
+  # Carbon burial at the bottom (last layer)
+  burial_flux <- u * DOM[numboxes]
+  
+  return(list(dDOM_dt, burial_flux))
+}
+
+# Run simulation
+output <- ode(y = yini, times = times, func = organic_matter_model, parms = parms)
 
 ```
+
+
 
 **Question 7:**  
 
@@ -89,7 +450,40 @@ Plot the output of your model as a contour plot with time on the x-axis and dept
 
 **Answer 7:**
 ```{r}
-#Plot
+output <- as.data.frame(output)
+
+# Generate depth levels for visualization
+delx <- depth / numboxes
+depths <- seq(from = delx / 2, by = delx, length.out = numboxes)  
+
+# Set proper column names
+colnames(output) <- c("time", depths, "BurialFlux")  
+
+# Extract DOM concentrations and burial flux
+DOM_concentration <- output[, 2:(numboxes + 1)]
+burial_flux_over_time <- output[["BurialFlux"]]  # Extract burial flux
+
+
+par(oma = c(0, 0, 3, 0)) 
+col <- topo.colors
+
+filled.contour(x = times, 
+               y = depths, 
+               z = as.matrix(DOM_concentration), 
+              color = col,
+              ylim = c(depth, 0),  
+               xlab = "Time (days)", 
+               ylab = "Depth (m)", 
+               main = "DOM Concentration (mmol C m-3)")
+
+#viz DOM
+DOM_total <- rowMeans(DOM_concentration) * depth
+plot(times, DOM_total, type = "l", xlab = "Days", ylab = "Total DOM (mmol C m-2)", main = "Total DOM Over Time")
+
+#viz carbon burial
+plot(times, burial_flux_over_time, type = "l", col = "blue",
+     xlab = "Days", ylab = "Burial Flux (mmol C m-2 day-1)",
+     main = "Carbon Burial Flux Over Time")
 ```
 
 ## Part 3: Sensitivity of burial rates
@@ -103,6 +497,66 @@ How is the burial rate sensitive to the sinking rate? Reduce the sinking rate by
 **Answer 8:**
 
 ```{r}
+# Parameters
+parms <- c(
+  u = 25,             # DOM sinking rate (m/day)
+  degradation = 0.2,  # Degradation rate (1/day)
+  DOM_flux_top = 100, # Flux at the top boundary (mmol C m-2 day-1)
+  depth = 400,        # Depth of aphotic zone (m)
+  numboxes = 48       # Number of depth layers
+)
+
+# Extract parameters correctly
+numboxes <- parms["numboxes"]
+depth <- parms["depth"]
+
+# Initial conditions: All boxes start at 0
+yini <- rep(0, numboxes)  
+
+# Simulation parameters
+simulation_time <- 2 * 365  # Days
+dt <- 1
+times <- seq(1, simulation_time, by = dt)
+
+new_output <- ode(y = yini, times = times, func = organic_matter_model, parms = parms)
+
+new_output <- as.data.frame(new_output)
+
+# Generate depth levels for visualization
+delx <- depth / numboxes
+depths <- seq(from = delx / 2, by = delx, length.out = numboxes)  
+
+# Set proper column names
+colnames(new_output) <- c("time", depths, "BurialFlux")  
+
+# Extract DOM concentrations and burial flux
+DOM_concentration <- new_output[, 2:(numboxes + 1)]
+new_burial_flux_over_time <- new_output[["BurialFlux"]]  # Extract burial flux
+
+par(oma = c(0, 0, 3, 0)) 
+col <- topo.colors
+
+filled.contour(x = times, 
+               y = depths, 
+               z = as.matrix(DOM_concentration), 
+              color = col,
+              ylim = c(depth, 0),  
+               xlab = "Time (days)", 
+               ylab = "Depth (m)", 
+               main = "DOM Concentration (mmol C m-3)")
+
+#viz DOM
+DOM_total <- rowMeans(DOM_concentration) * depth
+plot(times, DOM_total, type = "l", xlab = "Days", ylab = "Total DOM (mmol C m-2)", main = "Total DOM Over Time")
+
+#viz carbon burial
+plot(times, burial_flux_over_time, type = "l", col = "blue",
+     xlab = "Days", ylab = "Burial Flux (mmol C m-2 day-1)",
+     main = "Carbon Burial Flux Over Time")
+lines(times, new_burial_flux_over_time, type = "l", col = "red")
+legend("topright", c("50 m/s", "25 m/s"), col = c("blue", "red"), lty = c(1, 1))
+
+
 ```
 
 **Question 9:** 
@@ -111,8 +565,12 @@ How does the burial rate respond to the sinking rate? Explain why it is sensitiv
 
 **Answer 9:**
 
+Although sinking rate only declined by half, the burial rate declined to about 25% of what it was before. The reason the burial is so much less when the sinking rate declines is because degradation has more time to act on the total amount of DOM in the water column since it is a fixed rate that works on the DOM as long as it is in the upper layers. So less DOM reaches the last box, and less DOM is buried. 
+
 **Question 10:** 
 
 "Some models are useful."  How was this modeling assignment useful?
 
 **Answer 10:**
+There are still many things not included in this model, but it was useful for teaching us how to model spatially and capture different processes on phytoplankton and DOM throughout the water column. 
+

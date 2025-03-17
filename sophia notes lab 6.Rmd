@@ -1,0 +1,617 @@
+---
+title: "sophia notes"
+author: "Maria Popescu"
+date: "2025-03-04"
+output: html_document
+---
+title: "spatial-1d-in-class"
+author: "Quinn Thomas"
+date: "2023-02-14"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 1-D Spatial Model Tutorial go through code and think about what is on the board and match to code to see what is going on and then link the 2 and then at the beginning of class on thrusday 2/27 we walk through assignment the code is a simplification of the problem
+
+This tutorial guides you through the calculation of the advection, diffusion, and reaction processes necessary to simulate spatio-temporal dynamics in an ecosystem.
+
+The example is for phytoplankton dynamics in a lake that we simulate as having a vertical dimension (depth). Phytoplankton will sink (advection), diffuse, grow (reaction), and die (reaction).
+
+#tutorial is designed to teach, 
+
+## Diagram of spatial fluxes
+
+The following figure diagrams the concept of 
+
+$$ \frac{\partial C}{\partial t} = -\frac{1}{A}\frac{\partial (A\cdot{J})}{\partial{x}}$$
+
+where J is the flux density, and A is the area of the box
+
+![](img/divergence_figure.png)
+This generic calculation of a flux divergence can be applied to advection and diffusion.
+
+- advection: directed movement.  
+- diffusion (also called dispersion): random movement that reduces concentration gradients.  
+
+## Example of advection flux calculation
+
+$$ \frac{\partial C}{\partial t} = -\frac{1}{A}\frac{\partial (u A C)}{\partial{x}}$$
+
+First, define our states at three depths.
+
+```{r}
+PHYTO <- c(10, 0, 10)
+#three box problem the top box has 10 phytos middle box has 0 phytos and bottom has 10 phytos#
+```
+
+Next, define a few parameters.
+
+- `advection_flux_density_top`: the advection flux density (mmolC/m2/day) into the top box
+- `area`: the surface area (m2) of each box (we are assuming constant area for each depth of 100 m2)
+- `u`: our vertical velocity rate (m/day); i.e., how far a mmolC travels in one day
+- `delx`: is the length of the boxes (m)
+
+```{r}
+#specify advection into top box is an essential parameter it is a boundary condition we do not need one at the bottom because it is calcularted internally. top boundary condition is needed for advection and bottom is internally calculated so its not needed##
+advection_flux_density_top <- 0 #the advection flux density (mmolC/m2/day) into the top box
+area <- 100 #the surface area (m2) of each box (we are assuming constant area for each depth of 100 m2)
+u <- 0.2 #advection rate# our vertical velocity rate (m/day); i.e., how far a mmolC travels in one day
+delx <- 0.25 #thickness#is the length of the boxes (m)
+```
+
+
+Now calculate the total flux at each interface between the boxes.  The units of this calculation are m/day * mmolC/m3 * m2 = mmolC / day 
+
+$$ (u\cdot{A}\cdot{C})$$
+
+```{r}
+advection_flux <- u * PHYTO * area #calc advection flux
+```
+
+But this does not include the flux into the top of the top box. Since advection only flow in one direction we do not need a flux at the bottom of the bottom box.  Now include the flux into the top box
+
+
+```{r}
+advection_flux_top <- advection_flux_density_top * area #advection flux at top#
+advection_flux <- c(advection_flux_top, advection_flux) #combine advection flux together#
+```
+
+Does the flux density make sense? 
+
+Do the highest fluxes occur out of the boxes with the largest stocks?
+
+
+```{r}
+#does this make sense its 10 0 and 10 and our flux in is zero so our advection from top box into second box is 200 because of advection. 200 top to middle and 0 from middle to bottom box bc there is nothing in it and then there is 200 coming out of the bottom box# four values for advection flux but only 3 phyto states ?????
+advection_flux
+PHYTO
+```
+
+*Check for understanding:* Why are there four values for the `advection_flux` but only three for the PHYTO state?
+
+Now, we want to figure out the net advection flux, also called the flux divergence. This requires looking at the difference between the inputs at the top of a box and the outputs at the bottom. Using the `diff` function, we can easily do this on the entire vector of PHYTO states.
+
+$$ \partial (u\cdot{A}\cdot{C}) $$  
+
+
+```{r}
+#diff function looks one cell down and automatically does the subtraction for us 
+diff(advection_flux)
+```
+
+In this example:
+
+- box 1:  200 more mmol/day are leaving the bottom than coming the top.  
+- box 2: 200 more mmol/day are coming in the top and leaving the bottom.   
+- box 3: 200 more mmol/day  are leaving the bottom than coming the top.  
+
+Since a positive value from the diff function means that more is leaving than coming in, we need to multiply the flux density by -1 so that the mass is correctly subtracted from the box.
+
+$$ -\partial (u\cdot{A}\cdot{C})$$
+
+
+```{r}
+advection <- -diff(advection_flux)
+```
+
+
+Finally, intuitively, two boxes have the same net advection fluxes but one box is bigger than another box then the bigger box should have a smaller change in its concentration. Therefore we divide by the length of the box (in our example all boxes have the same length) and the area of the box (which is the same for all boxes in our example and is the middle of the box). The negative is moved to the front. 
+
+$$ \frac{\partial C}{\partial t} = -\frac{1}{A}\frac{\partial (u\cdot{A}\cdot{C})}{\partial{x}}$$
+
+```{r}
+advection <- -(1/area)*(diff(advection_flux) / delx) 
+#loss in top box gain in middle box and loss in bottom box#
+```
+
+The resulting units are mmolC / (m3 * day), which is a change in concentration over time (our derviative)
+
+Now we have the change in PHYTO for each box due to advection.  
+
+*Check for understanding:* Which box is gaining the most PHYTO from advection?  Why?
+
+```{r}
+advection
+```
+
+## Example of diffusion flux calculation
+
+$$ \frac{\partial C}{\partial t} = \frac{1}{A}\frac{\partial}{\partial{x}}(A\cdot{D}\cdot\frac{\partial C}{\partial x})$$
+
+
+First, we are going to use the same PHYTO states as used for the advection calculation.
+
+```{r}
+PHYTO #10 in box one 0 in box 2 10 in box 3#
+```
+
+Next, define a few parameters.
+
+- `D`: the diffusion rate parameter (1/day)
+- `area`: the surface area (m2) of each box (we are assuming constant area for each depth)
+- `top_diffusion_gradient`: The diffusion gradient from the top of the top box (mmolC/m)
+- `bottom_diffusion_gradient`: The diffusion gradient from the bottom of the bottom box (mmolC/m)
+- `delx`: is the length of the boxes (m)
+
+```{r}
+#we need top and bottom bc diffusion can go up nd down#
+D <- 0.01
+area <- 100
+top_diffusion_gradient <- 0.0
+bottom_diffusion_gradient <- 0.0
+delx <- 0.25
+```
+
+Now calculate the gradient in concentration between each box.
+
+$$ \partial C$$
+
+```{r}
+#gradient can be calculated using diff#
+gradient_between_boxes <- diff(PHYTO) 
+```
+
+
+But this does not include the concentration gradient at the top of the top box. Since diffusion can flow up or down we also need to include the gradient at the bottom.  Think of this as diffusion out of the "system" either up or down.  In our example, we are assuming that the gradient is zero at the boundaries of the system so there isn't any loss of mass outside the system due to diffusion (note that we do have a loss of mass out the bottom of the box due to advection)
+
+```{r}
+#ultimate graident contains top and bottom#
+gradient <- c(top_diffusion_gradient, gradient_between_boxes, bottom_diffusion_gradient)
+```
+
+The gradient depends on the distances between the middle of the boxes.
+
+$$ \frac{\partial C}{\partial x}$$
+
+```{r}
+gradient <- gradient / delx
+```
+
+The units are mmolC / m3 * 1/m = mmolC / m2
+
+Let's compare the gradient to the PHYTOS. 
+
+*Check for understanding:* Why are there four values for the gradient but only three for PHYTO?
+
+```{r}
+gradient
+PHYTO
+```
+
+The flux from diffusion is proportional to the size of the gradient. Importantly, a high gradient means that the box below is higher than the box above, so the mass will flow from the box with more concentration to the box with less concentration. This is against the gradient, so a negative sign is needed so concentration is removed from the box with more concentration.
+
+$$ (A\cdot{-D}\cdot\frac{\partial C}{\partial x})$$
+
+```{r}
+diffusion_flux <- area * -D * gradient
+```
+
+
+The units are m2 * 1/day * (mmolC / m3 * 1/m) = mmolC / day
+
+Now we want to figure out the **net** diffusion flux for each box, also called the **flux divergence**, or how much is the diffusion changing from the top to bottom of the box.
+
+$$ \partial(A\cdot{-D}\cdot\frac{\partial C}{\partial x})$$
+This requires looking at the difference between the inputs at the top of a box and the outputs at the bottom.  This can be easily done on the entire vector of PHYTO states using the `diff` function.  This will automatically subtract box i from i+1.  
+
+```{r}
+#change in the gradient over space #
+diff(diffusion_flux)
+```
+
+In this example:
+
+- box 1: 40 more mmolC/day are leaving than coming in 
+- box 2: 80 more mmolC/day are coming in than leaving  
+- box 3: 40 more mmolC/day are leaving than coming in  
+
+
+It needs to be multipled by -1 because if the diffusion out the bottom is higher than the diffusion in the top then simple subtraction of results a positive number. BUT if diffusion is higher out than it, the net flux should be negative because the box is a net loss of PHYTO.  So we multiply by -1.
+
+```{r}
+-diff(diffusion_flux)
+```
+
+Finally, intuitively, two boxes have the same net diffusion fluxes but one box is bigger than another box then the bigger box should have a smaller change in is concentration. Therefore we divide by the length of the box (in our example all boxes have the same length) and the area.  The negative sign is moved to the front.
+
+$$ \frac{\partial C}{\partial t} = -\frac{1}{A}\frac{\partial}{\partial{x}}(A\cdot{-D}\cdot\frac{\partial C}{\partial x})$$
+
+```{r}
+diffusion <- - (1 / area) * (diff(diffusion_flux) / delx)
+```
+
+1/m2 * 1/m * m2 * 1/day * (mmolC / m3 * 1/m) = mmolC / (m3 * day)
+
+Now we have the change in PHYTO for each box due to diffusion  
+
+*Check for understanding:* Which box is gaining the most PHYTO from diffusion?  Why?
+
+```{r}
+#changes of concentrations within each box#
+diffusion
+```
+
+## Reaction
+
+The reactions are the processes occurring within a box.  In our simple model, PHYTOS grow in response to light and die.  
+
+1) The light at the surface is defined using a sin wave where t is the day of the simulation (this is the same function as the NPZD model)
+
+```{r}
+t <- 1
+PAR_surface   <- 0.5 * (540 + 440 * sin(2 * pi * t / 365 - 1.4))
+```
+
+2) The light in each box is defined by the amount of water above it.  We calculate the light in the middle of each box using an exponential decay.  The `light_extinction` parameter is the decay parameter (similar to the k parameter in our decomposition model from Lab 3).  We are assuming our lake is 1 m meters deep and we have boxes that start at 0, 0.25, 0.5  meters deep.  The code `seq(delx/2, lake_depth - (delx/2), by = delx)` calculates the depth of the middle of the boxes.
+
+```{r}
+light_extinction <- 0.9 #less light as you go down
+lake_depth <- 0.75 #are 3m deep
+layer_mid_depths <- seq(delx/2, lake_depth - (delx/2), by = delx) 
+layer_PAR <- PAR_surface * exp(-light_extinction * layer_mid_depths)
+#PAR extinguishes wiht depth so growth rates extinguish with depth#
+```
+
+```{r}
+plot(layer_mid_depths,layer_PAR , type = "l", xlab = "Lake depth (m)", ylab = "PAR")
+```
+
+Carbon uptake is the proportional to the size of the PHYTO stock at each depth (PHYTOS are the worker) with a Michaelis–Menten light limitation multiplier (just like the NPZD model)
+
+```{r}
+maxUptake <- 2 #growth rate#
+ksPAR <- 140
+C_Uptake <- maxUptake *  PHYTO * (layer_PAR / (layer_PAR + ksPAR))  #for each layer
+C_Uptake
+```
+
+*Check for understanding:* Why is C_Uptake zero in the middle box?  Why is it lower for the bottom box?
+
+PHYTOS die for many different reasons that we represent using a non-linear closure term.
+
+```{r}
+mortalityRate <- 0.05 #how we would kill our phytos for each box
+Mortality <- mortalityRate * PHYTO^2
+```
+
+Our net reaction is
+
+```{r}
+reaction <- C_Uptake - Mortality #mortality exceeds growth in bottom box
+```
+
+## Combining it together 
+
+Our PHYTO along with the advection, diffusion and reaction rates for each box are:
+
+```{r}
+print("PHYTO")
+PHYTO
+print("Advection")
+advection
+print("Diffusion")
+diffusion
+print("Reaction")
+reaction
+```
+*Check understanding:* Do these values make sense
+
+
+So we can add together to get our differential equation.
+
+```{r}
+dPHYTO_dt <- advection + diffusion + reaction
+dPHYTO_dt
+```
+
+
+#TRADE OFF BETWEEN SPACE AND TIME, IF YOU HAVE VERY SMALL BOXES YOU CANT HAVE LARGE TIMESTEPS, if you do not allign these you have to decrease time step as you decrease box size if you do not ur model will fail becasue you would have magically moving mass bc rate of movement through system would be shroter than time
+
+
+
+## As a function
+
+```{r}
+phyto_depth_model <- function(t, state, parms){
+  
+  #unpack states
+  #note that PHYTOS is a vector where each cell is a different depth the state of this model#
+  #state is a vector and we do not specify 1,2,3,4 bc its an option to have different numbers of boxes there arent real boxes with depth that is just an artificial construct to solve equations by havint state be a vector we can have any number of states for phytos #
+  PHYTO <- state
+  #if you want more than one state you phyto<-state[1:numboxes] for 48 values and zoo<-state[(numboxes_1:numboxes*2)] this is second 48 values and this gives you the ability to still use the diff function 
+  
+  #Unpack parameters
+  u <- parms[1]
+  maxUptake <- parms[2]
+  light_extinction <- parms[3]
+  ksPAR <- parms[4]
+  mortalityRate <- parms[5]
+  D <- parms[6]
+  
+  #Boundary conditions assume nothing comes in from the top or bottom diffusion wise but the phytos CAN sink to the bottom#
+  phyto_flux_top <- parms[7]#phytos coming from the top we have it set to 0 because we assume there is nothing coming in from top#
+  top_diffusion_gradient <- parms[8] #phytos diffuse out top of reservoir it is 0 they dont magically fall down but it would be different for like.a stone fly bc they advect out the top#
+  bottom_diffusion_gradient <- parms[9] #phyto diffuse in and our of sediments needs to be specified so there is not constant diffusion until equillibrum#
+  
+  #Physical description 
+  area <- parms[10]
+  lake_depth <- parms[11]
+  numboxes <- parms[12] #this is a parameter so it can be changed for the number of boxes you ar edividig. your system into
+  
+  #Calculate the thickness of each layer
+  delx <- lake_depth / numboxes #
+  
+  #Calculate the environment (note that this depends on time)
+  #This the par at the top of the water column done worry about super understanfing 
+  PAR_surface   <- 0.5 * (540 + 440 * sin(2 * pi * t / 365 - 1.4))
+  
+  # Reaction
+  #calculate the depth of the middle of the box dont worry about super understanding but it says that delx/2 puts it in the middle depth. this calculates how deep the middle of the boxes are and then calculates light ext=extion by ligth at surface and how much it extinguishes per meter as it goes dow throughh depth calculation wont work if u do not have and define and specify boundaries. you need to define the bottom too with the boundary condition. if you have a fixed bottom you have infinite diffusion capacity until equillibrium is met 
+  layer_mid_depths <- seq(delx/2, lake_depth-delx/2, by = delx) 
+  layer_PAR <- PAR_surface * exp(-light_extinction * layer_mid_depths)
+  C_Uptake <- maxUptake *  PHYTO * (layer_PAR / (layer_PAR + ksPAR)) #reaction kspar is a value applied with a vector for uptake
+  Mortality <- mortalityRate * PHYTO^2 #mortality
+  reaction <- C_Uptake - Mortality #reaction
+  
+  #Diffusion calculation
+  gradient_middle_boxes <- diff(PHYTO)/delx #diff phyto is partial derivative C where C s concentration#
+  gradient <- c(top_diffusion_gradient, gradient_middle_boxes, bottom_diffusion_gradient)#this extends the vector for gradient#
+  diffusion_flux <- area * -D * gradient# partialderivatveC/partialderivativeX is the gradient#
+  diffusion <- -(1/area) * (diff(diffusion_flux) / delx) #that is partial derivative of diffusion flux which is partial derivative(-DApartialC/patrialdelx) all over delx with the partial being partial derivatives#
+  
+  # Advection calculation advection fluc the first thing oyu want to calculate is u*A*C is advection_flux <- c(phyto_flux_top, u * PHYTO) * area, c(0=fluxtop,u*phyto*A) you need a boundary condition at the start of the advection movement but you don't need one at the other end if you put a 0 at the bottom of the bodel it makes all the aterial advecting down simply pool at the bottom
+  
+  #if u_depth is a function you could bake to have like as depth changes as a funciton of u lie what it is at the top it returns the advection for that layer and that makes an internally calculated parameter that changes with depth bc conc changes with depth and rate per concentration also changes with depth, this is not what we are doing here but it is an option
+  advection_flux <- c(phyto_flux_top, u * PHYTO) * area
+  advection <- -(1/area) * (diff(advection_flux) / delx)#diff is the partial derivative of u*A*c how much is the advective flux changing if top is 1 and bottom is 1 change is 0. difference between top and bottom is net influence of advection devided by delx 
+  
+  # Net change for each box (this a vector) #net change for each box depends on the number of boxes#
+  dPHYTO_dt <- advection + diffusion + reaction
+#if you had the extra state it is dzoo_dt<-advection_zoo+diffusion_zoo+reaciton_zoo and would have to solve all the diff eq for the added state#
+  
+  #This returns the VECTOR of derivatives for each layer box our old school euler method can solve this because now we have a vector of dphyto like the vector is dphyto1/dt,dphyto2/d= phyto2[i-1++ the other derivatives for each onet,dphyto3/dt
+  list(c(dPHYTO_dt)) 
+ #takes big thing and breaks it into derivatves and time chunks if you add list(c(dphyto_dt,dzoo_dt))
+}
+```
+
+## Run function
+
+In this function we are increasing the depth to 12 meters and the mortality rate to 0.5
+
+```{r}
+#Parameters
+#Currency = mmolC/m3
+#Time scale = day
+parms <- c(
+  #Parameters
+  0.2, # vp: meters/day, Phyto sinking rate
+  2, #maxUptake: 1/day, Max Phyto growth rate    #
+  0.9,  #light_extinction: unitless, Light extinction rate
+  140,  #ksPAR units of light, Light half saturation
+  0.5, #mortalityRate: 1/day, mortality of plankton
+  0.01, # D: m2/day, Diffusion rate constant
+  #Boundary conditions
+  0, # phyto_flux_top (BOUNDRY CONDITION): mmolC/m2/d  flux at the upper boundary (Phyto input from outside the lake)
+  0, #top_diffusion_gradient (BOUNDRY CONDITION): mmolC/m, concentraton gradient at top 
+  0, #bottom_diffusion_gradient (BOUNDRY CONDITION): mmolC/m, concentration gradient at bottom
+  #Physical descriptions of the lake
+  1, #horizontal_area: horizontal area of lake m2
+  12, #lake_depth: depth of lake (m)
+  48)  #numboxes: number of boxes simulated
+
+numboxes <- parms[12]
+
+#First set all layers equal to zero you need 48 initial conditions bc each box needs an initial condition. increase # boxes increase # of initial conditions needed. needs to be set to something the model would crash
+yini <- rep(0, numboxes)
+
+#Then initialize the layers where the Phytos are starting
+yini[1] <- 3 #initial conditions is we put 3 phytos in the top box other boxes are zero bc we put 0 in the 48 boxes and hten overwrite the one that is at one with th evalue 3
+
+library(deSolve)
+
+#Use DeSolve to integrate this code doesnt care that we are solving a partial diffeq, it cares that we are returning 48 derivatives each time step. reports back how these derivatives change over time this is the numerical solution
+simulation_time <- 2 * 365 #DAYS
+dt <- 1
+times <- seq(1, simulation_time, by = dt)
+
+output <- ode(y = yini, 
+              times = times, 
+              func = phyto_depth_model, 
+              parms = parms)
+```
+
+## Visualize
+
+```{r}
+#Note that the first column in time and the other columns are the different depths that the derivative are calculated
+#Initial conditions
+area <- parms[10]
+lake_depth <- parms[11]
+numboxes <- parms[12]
+delx <- lake_depth / numboxes
+output <- as.data.frame(output)
+
+#Rename the columns to match the depths
+depths <- seq(from = delx / 2, by = delx, length.out = numboxes)  # sequence, 1 m intervals
+names(output) <- c("time", depths)
+output
+
+#Grab the columns that correspond to the different depths
+PHYTO <- output[, 2:(numboxes + 1)]
+
+# temporal-spatial plot of the concentrations
+par(oma = c(0, 0, 3, 0))   # set margin size (oma) so that the title is included
+col <- topo.colors
+
+filled.contour(x = times, 
+               y = depths, 
+               z = as.matrix(PHYTO), 
+               color = col, 
+               ylim = c(lake_depth, 0), 
+               zlim = range(c(PHYTO)),
+               xlab = "time, days", 
+               ylab = "Depth, m", 
+               main = "Concentration, mmolC/m3")
+
+mtext(outer = TRUE, side = 3, "Vertical phytoplankton model", cex = 1.5)
+```
+
+## Examing total phytoplankton
+
+```{r}
+phyto_total <- rowMeans(PHYTO) * lake_depth
+plot(times, phyto_total, type = "l", xlab = "days", ylab = "Total Phytos (mmolC/m2)")
+```
+
+
+Homework with notes 
+---
+title: "Ecosystem Dynamics Lab 6"
+output:
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Goals:
+
+-           Describe and apply a numerical approach to simulating both space and time using differential equations
+-           Conceptualize how plankton concentrations are sensitive to the light environment  
+-           Apply the concept of light extinction and Beer’s Law to an ecosystem model 
+-           Modify our existing vertical lake model for a new application (ocean carbon burial).  
+
+## Part 1: Space and time models
+
+**Question 1:** 
+
+Provide an example model application when you would potentially need the following dimensions in ecosystem modeling:
+
+**Answer 1:**
+hint 0 d is that there is no concept of space and only time like our NZPD model it has no space only time
+a)         0-D
+b)         1-D
+hint 1D model is the lake problem
+c)         2-D
+hint is this could work in a dream downstream and vertical modement everything is either gravity or downstream advect in direction of flow and graityy 
+d)         3-D
+jsut do every direction
+
+**Question 2:**  
+
+Describe the concept of flux divergence (see text).  
+
+**Answer 2:**
+net of advective processes acting on a box
+**Question 3:** 
+
+What is the difference between advection and diffusion?
+
+**Answer 3:**
+advection is directional
+**Question 4:**  
+
+Use the code that we covered in class to simulate the lake phytoplankton population for three years using 3 boxes instead of 48 boxes in the vertical dimension. How is your answer sensitive to the number of boxes that you use?  (think about how the idea of the number of vertical boxes compares to the idea of time steps when solving differential equations)
+#take code and simualte 3 boxes instead of 48 if we want to examine the entire phytoplanton compare the plot tha tlooks like a si wave w 48 boxes and compare it to the odel with a 3 boxes and see how model responds to alteration in # boxes 
+
+**Answer 4:**
+
+**Question 5:** 
+
+To control water quality, the amount of sediment coming into the lake has been reduced.  Decreasing the sediment increases the light penetration, which decreases the light extinction coefficient from 0.9 to 0.1.  Using your model, plot and describe how this alters the phytoplankton in the water column.  Describe the reasons for the model behavior. **Be sure to use 48 vertical boxes** 
+#we cleaned the water more light penetrates deeper what does that do quinn hint is literally change a single parameter
+
+**Answer 5:**
+```{r}
+#INSERT CODE TO SOLVE
+```
+
+## Part 2: Ocean carbon burial
+
+**Question 6:** 
+#we are modeling our ocean. solution is to simplify the code and bring in the soil decomposition model modify model so it only has advection and decomposition no growth no phytos and come in and put code for flux out bottom is list(c(dphytodt but it will be different for this ocean model and then within the list (c(dPHYTO_dt), c(advection_flux[numboxes]))))
+#measure only decomp in each box and have outflux as extra thing like CLA in NZPD model and plot that over time
+#this problem simplifies down what he has already given us#
+
+You can use the phytoplankton code as a guide for solving this question.  Importantly, you will be simplifying the existing code. The question follows Question 6.7.3 in S&H.
+
+The biological pump in the ocean is a component of the ocean carbon sink.  The biological pump depends on primary production in the upper ocean sinking and escaping mineralization.  If it is mineralized, then the CO2 returns to the atmosphere, thus not resulting in the net removal of CO2 from the atmosphere.  We are interested in how the rate of dead organic matter sinking influences the vertical distribution of dead organic matter in the ocean.
+
+The ocean has a euphotic zone and an aphotic zone.  The euphotic zone has light and is where photosynthesis occurs (the depth of this zone is not relevant to this problem). The aphotic zone has no light, so only mineralization occurs. It is 400 m thick (i.e., 400 m deep).  
+
+Implement a numerical solution of dead organic matter sinking through the aphotic part of an oceanic water column. Dead organic matter is raining down from the productive euphotic zone.  As it sinks through the water column, it is being degraded through mineralization.  In building your model, assume that:
+
+- The dead organic matter had a constant sinking velocity of (parameter u) of 50 m day-1.  The sinking of the dead organic matter is an advective process.   
+- Model the degradation of dead organic matter as a first-order decay process, with a degradation rate (k) of 0.2 day-1.   
+- The flux of dead organic matter from the euphotic zone, i.e. the upper boundary for our model, is prescribed as 100 mmol C m-2 day-1.  At the lower end of the water column, material leaves the water column to settle on the bottom.   
+- There is no diffusive mixing.   
+- Remember how you can add a second list to the output that is returned by your differential equation model function (see the PAR and CHL example in the NPZD model).  Add the advective flux for the only last layer as an extra output.  This is the carbon burial rate.   
+
+Run the model for a sufficiently long time so that the concentrations of dead organic matter stop changing over time.
+
+Provide the code and solve your model.
+
+**Answer 6:**
+```{r}
+#INSERT CODE TO SOLVE AND PLOT ANSWER
+
+```
+
+**Question 7:**  
+
+Plot the output of your model as a contour plot with time on the x-axis and depth on the y-axis.  The color should be the organic matter concentration. You will use the contour plot code provided in class as the base for the plot.
+
+**Answer 7:**
+```{r}
+#Plot
+```
+
+## Part 3: Sensitivity of burial rates
+
+How is the burial rate sensitive to the sinking rate? Reduce the sinking rate by half (from 50 m/s to 25 m/s) and simulate the burial rate. 
+
+**Question 8:**
+
+Create a plot that includes the burial rate with a 50 m/s and 25 m/s sinking rate.  Be sure to include a legend and axis labels. As an example of code for placing a legend: `legend("topright", c("50 m/s", "25 m/s"), col = c("black", "red"), lty = c("solid","solid"))`,  Your plot should be a line graph with two lines.
+
+**Answer 8:**
+
+```{r}
+```
+
+**Question 9:** 
+
+How does the burial rate respond to the sinking rate? Explain why it is sensitive (from a process/mechanistic perspective)
+
+**Answer 9:**
+
+**Question 10:** 
+
+"Some models are useful."  How was this modeling assignment useful?
+
+**Answer 10:**
