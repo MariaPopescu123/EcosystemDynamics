@@ -1,0 +1,120 @@
+---
+title: "Lab 7"
+author: "Quinn Thomas"
+date: "2023-02-16"
+output: html_document
+---
+
+# Microbial modeling: reading modeling journal paper
+
+## Goals of lab
+
+- Prepare to build the microbial model in the subsequent lab exercise.  
+-	Practice translating a published model to model code
+-	Practice building conceptual models
+
+## Assignment
+
+In this module, you will use your experience building models to construct a soil decomposition model based on the model description in a published paper.
+
+Before the lab, read the [Allison et al. (2010)] paper and supplemental information (https://doi.org/10.1038/ngeo846). Then, come to class ready to build the two models (an Enzyme-driven model and a Conventional model) described in the paper.
+
+Please come to class ready to discuss the paper and decide on the key finding that you'd like to reproduce.
+
+In preparation for model building, please answer the following questions (Due by the end of lab).
+
+**Question 1:**
+
+What is the model currency?
+
+**Answer 1:**
+carbon mg g-1 or mg cm-3 
+
+**Question 2:** 
+
+What is the model time scale?
+
+**Answer 2:**
+
+30 years
+
+**Question 3:**  
+
+What is the model spatial scale?
+
+**Answer 3:**
+cm-3 though there are global implications
+
+**Question 4:**
+
+What are the model states?
+
+**Answer 4:**
+Soil organic carbon 
+dissolved organic carbon 
+Microbial Inorganic Carbon (MIC)/microbial biomass
+Enzyme Pools (ANZ)
+
+**Question 5:**
+
+What are the model fluxes?
+
+**Answer 5:**
+enzyme catalysis
+DOC uptake
+carbon use efficiency
+death
+enzyme production
+
+**Question 6:**
+
+What are the forcing inputs (environmental drivers) to the model?
+
+**Answer 6:**
+temperature 
+**Question 7:**
+What initial conditions does the model require?
+
+**Answer 7:**
+SOC (111.876), DOC (0.00144928), MIC (2.19159), Enz (2.19159), 
+
+**Question 8:** 
+
+What are the model parameters?
+
+**Answer 8:**
+endTime
+interval
+temp
+inputSOC
+inputDOC
+rdeath
+rEnzProd
+rEnzLoss
+MICtoSOC
+CUE0
+CUEslope
+Vmax0
+Vmaxuptake0
+Km0
+Kmuptake0
+Kmslope
+Kmuptakeslope
+Ea
+Eauptake
+
+**Question 9:**
+
+Draw a conceptual diagram of the Enzyme-driven model and label the fluxes with a number (f#).  Be sure to link to your figure in this Markdown, so it appears in the HTML you submit.
+
+**Answer 9:**
+![](C:/Users/maria/OneDrive/2023 Rtudio/EcosystemDynamics/conceptual_lab7.jpg)
+**Question 10:**
+
+Write the differential equations for the Enzyme-driven model states using the flux numbers from question 9. 
+
+**Answer 10:**
+dMIC/dt = f1 * f2 - f3 - f4
+dENZ/dt = f4 - f5
+dSOC/dt = f6+ f3 * f7 - f8
+dDOC/dt = f9 + f3 *(1-f7) + f8 + f5 - f1
