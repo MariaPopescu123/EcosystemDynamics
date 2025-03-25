@@ -36,7 +36,7 @@ What is the model time scale?
 
 **Answer 2:**
 
-30 years
+30 years for simulation but units are in hours
 
 **Question 3:**  
 
@@ -53,18 +53,22 @@ What are the model states?
 Soil organic carbon 
 dissolved organic carbon 
 Microbial Inorganic Carbon (MIC)/microbial biomass
-Enzyme Pools (ANZ)
+Enzyme Pools (ENZ)
 
 **Question 5:**
 
 What are the model fluxes?
 
 **Answer 5:**
-enzyme catalysis
-DOC uptake
-carbon use efficiency
-death
-enzyme production
+input SOC
+decomp
+asisimilation
+co2 output
+eproduction
+eloss
+inputDOC
+MICtoSOC
+MICtoDOC
 
 **Question 6:**
 
@@ -76,7 +80,10 @@ temperature
 What initial conditions does the model require?
 
 **Answer 7:**
-SOC (111.876), DOC (0.00144928), MIC (2.19159), Enz (2.19159), 
+SOC (100), DOC (0.5), MIC (0.5), Enz (0.01), 
+from the spin-up
+
+SOC (111.876) DOC (0.00144928) MIC (2.19159) ENZ (0.0109579) 
 
 **Question 8:** 
 
@@ -108,13 +115,16 @@ Eauptake
 Draw a conceptual diagram of the Enzyme-driven model and label the fluxes with a number (f#).  Be sure to link to your figure in this Markdown, so it appears in the HTML you submit.
 
 **Answer 9:**
-![](C:/Users/maria/OneDrive/2023 Rtudio/EcosystemDynamics/conceptual_lab7.jpg)
+![](C:/Users/maria/OneDrive/2023 Rtudio/EcosystemDynamics/lab7conceptualfig.png)
 **Question 10:**
 
 Write the differential equations for the Enzyme-driven model states using the flux numbers from question 9. 
 
 **Answer 10:**
-dMIC/dt = f1 * f2 - f3 - f4
+dMIC/dt = f1 * CUE - f3 - f4
+
 dENZ/dt = f4 - f5
+
 dSOC/dt = f6+ f3 * f7 - f8
-dDOC/dt = f9 + f3 *(1-f7) + f8 + f5 - f1
+
+dDOC/dt = f9 + f3 *(F10) + f8 + f5 - f1
