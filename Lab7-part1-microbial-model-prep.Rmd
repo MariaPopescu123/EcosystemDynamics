@@ -60,15 +60,21 @@ Enzyme Pools (ENZ)
 What are the model fluxes?
 
 **Answer 5:**
-input SOC
-decomp
-asisimilation
-co2 output
-eproduction
-eloss
+#added this for vibes and assistance for later model development
+Km_uptake = Km_uptakeslope * temp + Km
+CUE = CUEslope*temp+CUE0
+
+
+inputSOC
+decomp = Vmax * ENZ * (SOC/Km+SOC)
+assimilation
+co2 = ASSIM * (1-CUE)
+eprod
+ELOSS = rEnzLoss * Enz
 inputDOC
 MICtoSOC
 MICtoDOC
+
 
 **Question 6:**
 
@@ -109,6 +115,10 @@ Kmslope
 Kmuptakeslope
 Ea
 Eauptake
+gasconst
+
+
+
 
 **Question 9:**
 

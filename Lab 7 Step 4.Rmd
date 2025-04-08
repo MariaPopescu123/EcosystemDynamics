@@ -1,0 +1,554 @@
+---
+title: "Lab 7 Step 4"
+author: "Maria Popescu"
+date: "2025-04-01"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Note to Quinn:
+I have changed my parameters back and forth and have decided to leave what I have now, even though I am aware it is wrong and it doesn't make sense (I ran out of time). I am also including my coding from the spin-up model here so that you can see that I did initially keep CUEslope and CUE0 calculations, and I did at least have that part done. I now don't have time to change what I did, so I am submitting as is. 
+
+####spin-up model 
+```{r}
+microbial_model <- function (t, states, parms){
+
+#unpack states
+SOC <- states[1]
+DOC <- states[2]
+MIC <- states[3]
+ENZ <- states[4]
+
+#unpack parameters
+  temp <- parms[1] 
+  inputSOC <- parms[2]
+  inputDOC <- parms[3]
+  rdeath <- parms[4]
+  rEnzProd <- parms[5]
+  rEnzLoss <- parms[6]
+  MICtoSOC <- parms[7]
+  CUE0 <- parms[8]
+  CUEslope <- parms[9]
+  Vmax0 <- parms[10]
+  Vmaxuptake0 <- parms[11]
+  Km0 <- parms[12]
+  Kmuptake0 <- parms[13]
+  Kmslope <- parms[14]
+  Kmuptakeslope <- parms[15]
+  Ea <- parms[16]
+  Eauptake <- parms[17]
+  gasconst <- parms[18]
+
+#calculate stuff to go into fluxes
+vmaxuptake = Vmaxuptake0 *exp(-Eauptake/(gasconst * (temp +273)))
+Kmuptake = Kmuptakeslope * temp + Kmuptake0
+Vmax = Vmax0 * exp(-Ea/(gasconst *(temp+273)))
+Km = Kmslope * temp + Km0
+
+
+#calculate fluxes 
+ASSIM = vmaxuptake * MIC * (DOC/(Kmuptake+DOC))
+CUE = CUEslope * temp + CUE0
+DEATH = rdeath * MIC
+EPROD = rEnzProd *MIC
+ELOSS = rEnzLoss *ENZ
+DECOMP = Vmax * ENZ * (SOC/(Km + SOC))
+
+
+# differential equations
+dSOC_dt = inputSOC + DEATH * MICtoSOC - DECOMP
+dDOC_dt = inputDOC + DEATH * (1 - MICtoSOC) + DECOMP + ELOSS - ASSIM
+dMIC_dt = ASSIM * CUE - DEATH - EPROD
+dENZ_dt = EPROD - ELOSS
+CO2 = ASSIM * (1- CUE) 
+
+
+return(list(c(dSOC_dt = dSOC_dt,
+              dDOC_dt = dDOC_dt,
+              dMIC_dt = dMIC_dt,
+              dENZ_dt = dENZ_dt), 
+            c(CO2 = CO2)))   
+}
+
+parms <- c(
+20, # temp
+0.0005,  # inputSOC
+0.0005,  # inputDOC
+0.0002, # rdeath
+0.000005, # rEnzProd
+0.001, # rEnzLoss
+0.5, # MICtoSOC
+0.63, # CUE0
+-0.016,  # CUEslope
+100000000,  # Vmax0
+100000000, # Vmaxuptake0
+500, # Km0
+0.1, # Kmuptake0
+5, # Kmslope
+0.01, # Kmuptakeslope
+47, # Ea
+47, # Eauptake
+0.008314 # gasconst
+)
+
+#initialize model
+
+yini <- c(
+  SOC = 100,
+  DOC = 0.5,
+  MIC = 0.5, 
+  ENZ = 0.01)
+
+
+simulation_time <- (100*365*24)
+dt <- 24
+times <- seq(1, simulation_time, by = dt)
+
+library(deSolve)
+
+out <- ode(y = yini, times = times, func = microbial_model, parms = parms, method = "lsoda")
+out <- as.data.frame(out)
+
+
+tail(out,1) #where 'out' is the output of the ODE solver
+
+```
+
+##Methods Section
+- Conceptual model diagram 
+
+![](C:/Users/maria/OneDrive/2023 Rtudio/EcosystemDynamics/lab7conceptualfig.png)
+dMIC/dt = f1 * CUE - f3 - f4
+dENZ/dt = f4 - f5
+dSOC/dt = f6+ f3 * f7 - f8
+dDOC/dt = f9 + f3 *(F10) + f8 + f5 - f1
+
+- Code that is used to simulate the differential equation model as a function.  This is your differential equation function
+
+```{r}
+microbial_model <- function (t, states, parms){
+
+#unpack states
+SOC <- states[1]
+DOC <- states[2]
+MIC <- states[3]
+ENZ <- states[4]
+
+#unpack parameters
+  temp <- parms[1] 
+  inputSOC <- parms[2]
+  inputDOC <- parms[3]
+  rdeath <- parms[4]
+  rEnzProd <- parms[5]
+  rEnzLoss <- parms[6]
+  MICtoSOC <- parms[7]
+  CUE <- parms[8]
+  Vmax0 <- parms[9]
+  Vmaxuptake0 <- parms[10]
+  Km0 <- parms[11]
+  Kmuptake0 <- parms[12]
+  Kmslope <- parms[13]
+  Kmuptakeslope <- parms[14]
+  Ea <- parms[15]
+  Eauptake <- parms[16]
+  gasconst <- parms[17]
+
+#calculate stuff to go into fluxes
+vmaxuptake = Vmaxuptake0 *exp(-Eauptake/(gasconst * (temp +273)))
+Kmuptake = Kmuptakeslope * temp + Kmuptake0
+Vmax = Vmax0 * exp(-Ea/(gasconst *(temp+273)))
+Km = Kmslope * temp + Km0
+
+
+#calculate fluxes 
+ASSIM = vmaxuptake * MIC * (DOC/(Kmuptake+DOC))
+DEATH = rdeath * MIC
+EPROD = rEnzProd *MIC
+ELOSS = rEnzLoss *ENZ
+DECOMP = Vmax * ENZ * (SOC/(Km + SOC))
+
+
+# differential equations
+dSOC_dt = inputSOC + DEATH * MICtoSOC - DECOMP
+dDOC_dt = inputDOC + DEATH * (1 - MICtoSOC) + DECOMP + ELOSS - ASSIM
+dMIC_dt = ASSIM * CUE - DEATH - EPROD
+dENZ_dt = EPROD - ELOSS
+CO2 = ASSIM * (1- CUE) 
+
+
+return(list(c(dSOC_dt = dSOC_dt,
+              dDOC_dt = dDOC_dt,
+              dMIC_dt = dMIC_dt,
+              dENZ_dt = dENZ_dt), 
+            c(CO2 = CO2)))   
+}
+```
+
+- Description of the model experiment.
+
+We are simulating 4 different scenarios
+
+- control (no warming).  
+- warm + const CUE. CUE doesn't change but temperature increases by 5 C
+- warm + vary CUE. 
+- warm + acclim CUE. 
+
+####control
+```{r}
+parms <- c(
+20, # temp
+0.0005,  # inputSOC
+0.0005,  # inputDOC
+0.0002, # rdeath
+0.000005, # rEnzProd
+0.001, # rEnzLoss
+0.5, # MICtoSOC
+0.31, # CUE
+100000000,  # Vmax0
+100000000, # Vmaxuptake0
+500, # Km0
+0.1, # Kmuptake0
+5, # Kmslope
+0.01, # Kmuptakeslope
+47, # Ea
+47, # Eauptake
+0.008314 # gasconst,
+)
+
+#this is from the spinup number
+
+yini <- c(
+  SOC = 111.8763,
+  DOC = 0.0004758168,
+  MIC = 2.191582, 
+  ENZ = 0.01095791)
+
+library(deSolve)
+
+simulation_time <- (30*365*24) #30 years
+dt <- 24
+times <- seq(1, simulation_time, by = dt)
+
+control <- ode(y = yini, times = times, func = microbial_model, parms = parms, method = "lsoda")
+control <- as.data.frame(control)
+```
+
+####warm + const CUE
+```{r}
+parms <- c(
+25, # temp increased 5 degrees
+0.0005,  # inputSOC
+0.0005,  # inputDOC
+0.0002, # rdeath
+0.000005, # rEnzProd
+0.001, # rEnzLoss
+0.5, # MICtoSOC
+0.31, # CUE
+100000000,  # Vmax0
+100000000, # Vmaxuptake0
+500, # Km0
+0.1, # Kmuptake0
+5, # Kmslope
+0.01, # Kmuptakeslope
+47, # Ea
+47, # Eauptake
+0.008314 # gasconst,
+)
+
+#this is from the spinup number
+
+yini <- c(
+  SOC = 111.8763,
+  DOC = 0.0004758168,
+  MIC = 2.191582, 
+  ENZ = 0.01095791)
+
+library(deSolve)
+
+simulation_time <- (30*365*24) #30 years
+dt <- 24
+times <- seq(1, simulation_time, by = dt)
+
+warm_constCUE <- ode(y = yini, times = times, func = microbial_model, parms = parms, method = "lsoda")
+warm_constCUE <- as.data.frame(warm_constCUE)
+```
+
+####warm + vary CUE
+"We simulated warming by increasing temperature from 20ºC to 25ºC and varied the 
+temperature sensitivity of CUE in our analyses between zero and –0.016 ºC-1. We also conducted 
+runs with constant CUE by fixing this parameter at 0.31, its value at 20ºC."
+```{r}
+
+microbial_model <- function (t, states, parms){
+
+#unpack states
+SOC <- states[1]
+DOC <- states[2]
+MIC <- states[3]
+ENZ <- states[4]
+
+#unpack parameters
+  temp <- parms[1] 
+  inputSOC <- parms[2]
+  inputDOC <- parms[3]
+  rdeath <- parms[4]
+  rEnzProd <- parms[5]
+  rEnzLoss <- parms[6]
+  MICtoSOC <- parms[7]
+  CUE0 <- parms[8]
+  CUEslope <- parms[9]
+  Vmax0 <- parms[10]
+  Vmaxuptake0 <- parms[11]
+  Km0 <- parms[12]
+  Kmuptake0 <- parms[13]
+  Kmslope <- parms[14]
+  Kmuptakeslope <- parms[15]
+  Ea <- parms[16]
+  Eauptake <- parms[17]
+  gasconst <- parms[18]
+
+#calculate stuff to go into fluxes
+vmaxuptake = Vmaxuptake0 *exp(-Eauptake/(gasconst * (temp +273)))
+Kmuptake = Kmuptakeslope * temp + Kmuptake0
+Vmax = Vmax0 * exp(-Ea/(gasconst *(temp+273)))
+Km = Kmslope * temp + Km0
+
+
+#calculate fluxes 
+ASSIM = vmaxuptake * MIC * (DOC/(Kmuptake+DOC))
+CUE = CUEslope * temp + CUE0
+DEATH = rdeath * MIC
+EPROD = rEnzProd *MIC
+ELOSS = rEnzLoss *ENZ
+DECOMP = Vmax * ENZ * (SOC/(Km + SOC))
+
+
+# differential equations
+dSOC_dt = inputSOC + DEATH * MICtoSOC - DECOMP
+dDOC_dt = inputDOC + DEATH * (1 - MICtoSOC) + DECOMP + ELOSS - ASSIM
+dMIC_dt = ASSIM * CUE - DEATH - EPROD
+dENZ_dt = EPROD - ELOSS
+CO2 = ASSIM * (1- CUE) 
+
+
+return(list(c(dSOC_dt = dSOC_dt,
+              dDOC_dt = dDOC_dt,
+              dMIC_dt = dMIC_dt,
+              dENZ_dt = dENZ_dt), 
+            c(CO2 = CO2)))   
+}
+
+parms <- c(
+25, # temp increased 5 degrees
+0.0005,  # inputSOC
+0.0005,  # inputDOC
+0.0002, # rdeath
+0.000005, # rEnzProd
+0.001, # rEnzLoss
+0.5, # MICtoSOC
+0.31, # CUE0
+-0.016,  # CUEslope
+100000000,  # Vmax0
+100000000, # Vmaxuptake0
+500, # Km0
+0.1, # Kmuptake0
+5, # Kmslope
+0.01, # Kmuptakeslope
+47, # Ea
+47, # Eauptake
+0.008314 # gasconst,
+)
+
+#this is from the spinup number
+
+yini <- c(
+  SOC = 111.8763,
+  DOC = 0.0004758168,
+  MIC = 2.191582, 
+  ENZ = 0.01095791)
+
+library(deSolve)
+
+simulation_time <- (30*365*24) #30 years
+dt <- 24
+times <- seq(1, simulation_time, by = dt)
+
+warm_varyCUE <- ode(y = yini, times = times, func = microbial_model, parms = parms, method = "lsoda")
+warm_varyCUE <- as.data.frame(warm_varyCUE)
+```
+
+####warm + acclim CUE
+"We simulated microbial acclimation and altered C inputs in several ways. To represent 
+acclimation of CUE, we reduced its temperature sensitivity by 50% under warming (resulting in 
+a value of 0.27 instead of 0.23). Acclimation of extracellular and uptake enzyme kinetics was 
+accomplished by making half as sensitive and ݉ 50% more sensitive to a 5ºC increase 
+in temperature"
+```{r}
+#acclimate CUE by reducing temp sensitivity by 50%
+microbial_model <- function (t, states, parms){
+
+#unpack states
+SOC <- states[1]
+DOC <- states[2]
+MIC <- states[3]
+ENZ <- states[4]
+
+#unpack parameters
+  temp <- parms[1] 
+  inputSOC <- parms[2]
+  inputDOC <- parms[3]
+  rdeath <- parms[4]
+  rEnzProd <- parms[5]
+  rEnzLoss <- parms[6]
+  MICtoSOC <- parms[7]
+  CUE <- parms[8]
+  Vmax0 <- parms[9]
+  Vmaxuptake0 <- parms[10]
+  Km0 <- parms[11]
+  Kmuptake0 <- parms[12]
+  Kmslope <- parms[13]
+  Kmuptakeslope <- parms[14]
+  Ea <- parms[15]
+  Eauptake <- parms[16]
+  gasconst <- parms[17]
+
+#calculate stuff to go into fluxes
+vmaxuptake = Vmaxuptake0 *exp(-Eauptake/(gasconst * (temp +273)))
+Kmuptake = Kmuptakeslope * temp + Kmuptake0
+Vmax = Vmax0 * exp(-Ea/(gasconst *((temp+273))))
+Km = Kmslope * temp + Km0
+
+
+#calculate fluxes 
+ASSIM = vmaxuptake * MIC * (DOC/(Kmuptake+DOC))
+DEATH = rdeath * MIC
+EPROD = rEnzProd *MIC
+ELOSS = rEnzLoss *ENZ
+DECOMP = Vmax * ENZ * (SOC/(Km + SOC))
+
+
+# differential equations
+dSOC_dt = inputSOC + DEATH * MICtoSOC - DECOMP
+dDOC_dt = inputDOC + DEATH * (1 - MICtoSOC) + DECOMP + ELOSS - ASSIM
+dMIC_dt = ASSIM * CUE - DEATH - EPROD
+dENZ_dt = EPROD - ELOSS
+CO2 = ASSIM * (1- CUE) 
+
+
+return(list(c(dSOC_dt = dSOC_dt,
+              dDOC_dt = dDOC_dt,
+              dMIC_dt = dMIC_dt,
+              dENZ_dt = dENZ_dt), 
+            c(CO2 = CO2)))   
+}
+
+parms <- c(
+25, # temp increased 5 degrees
+0.0005,  # inputSOC
+0.0005,  # inputDOC
+0.0002, # rdeath
+0.000005, # rEnzProd
+0.001, # rEnzLoss
+0.5, # MICtoSOC
+0.27, # CUE
+100000000,  # Vmax0
+100000000, # Vmaxuptake0
+500, # Km0
+0.1, # Kmuptake0
+5, # Kmslope
+0.01, # Kmuptakeslope
+47, # Ea
+47, # Eauptake
+0.008314 # gasconst,
+)
+
+#this is from the spinup number
+yini <- c(
+  SOC = 111.8763,
+  DOC = 0.0004758168,
+  MIC = 2.191582, 
+  ENZ = 0.01095791)
+
+library(deSolve)
+
+simulation_time <- (30*365*24) #30 years
+dt <- 24
+times <- seq(1, simulation_time, by = dt)
+
+warm_acclimCUE <- ode(y = yini, times = times, func = microbial_model, parms = parms, method = "lsoda")
+warm_acclimCUE <- as.data.frame(warm_acclimCUE)
+```
+
+####Results 
+
+```{r}
+par(mfrow=c(2,3)) #First number is the number of rows, and the second number is the number of columns in the plot
+
+#Plot like normal
+plot(times, control$CO2.MIC, xlab = "Time (days)", ylab = "µg g1 h1", main = "CO2 efflux", type = "l", col = "black")
+lines(times, warm_constCUE$CO2, col = "red")
+lines(times, warm_varyCUE$CO2, col = "blue")
+lines(times, warm_acclimCUE$CO2, col = "green")
+
+
+#SOC
+plot(times, control$SOC, xlab = "Time (days)", ylab = "mg g1 h1", main = "SOC", type = "l", col = "black")
+lines(times, warm_constCUE$SOC, col = "red")
+lines(times, warm_varyCUE$SOC, col = "blue")
+lines(times, warm_acclimCUE$SOC, col = "green")
+
+#DOC
+plot(times, control$DOC, xlab = "Time (days)", ylab = "µg g1 h1", main = "DOC", type = "l", col = "black")
+lines(times, warm_constCUE$DOC, col = "red")
+lines(times, warm_varyCUE$DOC, col = "blue")
+lines(times, warm_acclimCUE$DOC, col = "green")
+
+#MIC
+plot(times, control$MIC, xlab = "Time (hours)", ylab = "mg g1 h1", main = "MIC", type = "l", col = "black")
+lines(times, warm_constCUE$MIC, col = "red")
+lines(times, warm_varyCUE$MIC, col = "blue")
+lines(times, warm_acclimCUE$MIC, col = "green")
+
+#ENZ
+plot(times, control$ENZ, xlab = "Time (hours)", ylab = "µg g1 h1", main = "ENZ", type = "l", col = "black")
+lines(times, warm_constCUE$ENZ, col = "red")
+lines(times, warm_varyCUE$ENZ, col = "blue")
+lines(times, warm_acclimCUE$ENZ, col = "green")
+
+#help from chat gpt because I couldn't figure out how to make my legend not on top of everything else
+plot.new()  # Empty plot space
+legend("center", legend = c("control", "warm_constCUE", "warm_varyCUE", "warm_acclimCUE"), col = c("black", "red", "blue", "green"), lty = c(1, 1, 1, 1))
+
+```
+
+####Discussion section
+
+- What did you learn about how microbial dynamics may influence the response of decomposition and soil carbon storage to climate change?
+
+  I really struggled in general with this assignment... :( From the paper, though, I understand that when you adjust your model structure to place emphasis on different mechanisms it can influence how carbon pools are affected in relation to climate change. Decomposition and soil carbon storage are calculated from microbial activity and how carbon utilization efficiency changes with climate change can significantly influence decomposition and soil carbon storage. 
+  
+- Why does the finding from the paper matter?  
+
+  This Enzyme Model is a new approach to addressing carbon cycling in models, because it address how microbial processes are temperature sensitive and can thus effect fluxes between pools. This can have large implications for the final result of how much carbon is stored in enzymes, biomass, dissolved organic carbon, and soil organic carbon over the course of 30 years. They explore how carbon -use efficiency (the fraction of assimilated carbon that is allocated for growth) may change the effects of climate related variables (such as temperature) on carbon dioxide emissions as well. If there is no acclimation by the microbes, then the effect that temperature has on CUE would essentially limit the biomass, so that carbon dioxide loss eventually declines to control levels. However, if the microbes acclimate and there is an adjustment of the CUE, CO2 emissions won't level out in the same way, and microbial biomass won't decrease as fast.  
+
+- Caveats and key areas of uncertainty in the model. 
+
+  This is still a very simplified representation of the microbial community, and it does not take microbial diversity into account (Allison et al. 2010). The sensitivities are also not fully explored. Also this model is limited in that it doesn't take into account soil composition and spatial constraints. Plants can also effect microbial community composition and structure, and their growth and decomposition rates would also likely be affected by climate change (Jonasson et al. 2004). Furthermore, water content is known to play a role in regulating soil and microbial respiration and response to climate change (Liu et al. 2009), but it was not incorporated into this model. 
+
+- What is the next question that you would like to potentially explore with the model  (or a modified version of the model) and why? This answer can’t be the same as what is discussed in Allison et al. (2010).
+
+  It would be interesting to include hydrological patterns into this model - as climate change progresses, precipitation dynamics will change and influence humidity in the soils. Water availability will influence CUE, microbial community composition, and function, and so it would be interesting to build a model that takes this into account. 
+
+
+#### References
+
+Allison, S. D., M. D. Wallenstein, and M. A. Bradford. 2010. Soil-carbon response to warming dependent on microbial physiology. Nature Geoscience 3(5):336–340. https://doi.org/10.1038/ngeo846.
+
+Jonasson, S., J. Castro, and A. Michelson. 2004. Litter, warming, and plants affect respiration and allocation of soil microbial and plant C, N, and P in arctic mesocosms. Soil Biology and Biochemistry 36:1129–1139.
+
+Liu, W., Z. Zhang, and S. Wan. 2009. Predominant role of water in regulating soil and microbial respiration and their responses to climate change in a semiarid grassland. Global Change Biology 15:184–195.
+
