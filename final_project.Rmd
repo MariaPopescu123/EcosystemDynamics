@@ -1,0 +1,246 @@
+---
+title: "Final Project building off of NPZD model"
+author: "Maria Popescu"
+output:
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Goals:
+I am building off of the NPZD model and adding oxygen dynamics and other components of the nitrogen cycle (denitrification, nitrification, nitrous oxide emissions). I am also adding differential uptake of nitrate and ammonium for phytoplankton
+
+# Step 1: Conceptual Model
+
+![](C:/Users/maria/OneDrive/2023 Rtudio/EcosystemDynamics/DIN_input_output.png)
+
+
+#Step 2: Code Model
+
+```{r}
+NPZD_model <- function(t, states, parms){
+  
+  #unpack states
+  PHYTO <- states[1]
+  ZOO <- states[2]
+  DET <- states[3]
+  NH4 <- states[4]
+  NO3 <- states[5]
+  
+  #unpack parms
+  maxUptake <- parms[1]
+  kspar <- parms[2] #light exctinction
+  ksdin <- parms[3] #nitrogen influence on uptake
+  maxGrazing <- parms[4] #phytoplankton grazing influence
+  ksphyto <- parms[5] 
+  pFeces <- parms[6] #bad feeding
+  excretionRate <- parms[7]
+  mortalityRate <- parms[8]
+  mineralizationRate <- parms[9]
+  Chl_Nratio <- parms[10]
+  inflow <- parms[11]
+  outflow <- parms[12]
+  nitrificationRate <- parms[13]
+  denitrificationRate <- parms[14]
+  ox <- parms[15]
+  k_ox <- parms[16]
+  
+  #Calculate the environment (note that this depends on time)
+  #50% of light is PAR
+  PAR <- 0.5 * (540 + 440 * sin(2 * pi * t / 365 - 1.4)) 
+  
+# calculate individual fractions
+#fNH4 <- NH4 / (NH4 + ksdin)
+#fNO3 <- NO3 / (NO3 + ksdin)
+fN <- (NH4+NO3) / ((NH4+NO3)+ksdin)
+fLight <- PAR / (PAR + kspar)
+
+uptake <- maxUptake * PHYTO * fN * fLight
+
+weight_NH4 <- NH4 / ((NH4 + NO3))  # prefer NH4
+weight_NO3 <- 1 - weight_NH4         # remainder goes to NO3
+
+uptake_NH4 <- uptake * weight_NH4
+uptake_NO3 <- uptake * weight_NO3
+  
+  fPHYTO <- PHYTO / (PHYTO + ksphyto) 
+  grazing <- maxGrazing * ZOO * fPHYTO
+
+
+  print(c(uptake, grazing, uptake_NH4, uptake_NO3, NH4, NO3))
+
+  
+  feces_production <- grazing * pFeces
+  
+  excretion <- excretionRate * ZOO
+  
+  foxy <- ox / (k_ox + ox) #useful function #make this into a parameter
+  
+  zoo_mortality <- mortalityRate * ZOO^2 * (1-foxy)
+  
+  mineralization <- mineralizationRate * DET * foxy
+  
+  denitrification <- denitrificationRate * (1-foxy) * NO3 #if oxic it shouldn't be working. 
+  nitrification <- nitrificationRate * foxy * NH4
+  N2O_yield <- (1 - foxy) * .02
+  N2O_emissions <- N2O_yield * denitrification
+  
+  #calculate derivatives
+  dPHYTO_dt <- uptake_NH4+uptake_NO3 - grazing
+  dZOO_dt <- grazing - feces_production - zoo_mortality - excretion
+  dDETRITUS_dt <- zoo_mortality + feces_production - mineralization
+  dNH4 <- excretion + mineralization - uptake_NH4  
+  dNO3 <- nitrification - (outflow * NO3) + inflow - denitrification - uptake_NO3 
+  
+  
+ #return the list of derivatives plus any other variables that you are interested in
+  
+  return(list(c(dPHYTO_dt = dPHYTO_dt, # the rates of change
+                dZOO_dt = dZOO_dt,
+                dDETRITUS_dt = dDETRITUS_dt,
+                dNH4_dt = dNH4,
+                dNO3_dt = dNO3),
+              # other output variables
+              c(N2O_emissions = N2O_emissions, 
+                denitrification = denitrification, 
+                PAR = PAR)))         
+}
+
+```
+
+#Step 3: Parameterize Model
+
+We are going to assume that the DIN output is a first-order process controlled by the DIN in the lake. The DIN output rate parameter will be the turnover rate of water in the lake (1 / residence time). Assume that the lake has a 720-day residence time.
+
+We will assume that the DIN input is a constant equal to 0.0012 mmol N m-3 day-1.
+
+For mineralization, denitrification, nitrification, and N2O_loss, adjust the oxygen concentrations. 
+relationships: mineralization (positive), denitrification (negative), nitrification (positive), and N2O_loss (highest emissions at moderate to low oxygen)
+
+```{r}
+parms_10 <- c(
+  .1,  #maxUptake INSERT UNITS
+  120,  #kspar INSERT UNITS
+  .1,  #ksdin INSERT UNITS
+  1,  #maxGrazing INSERT UNITS
+  .9,    #ksphyto INSERT UNITS
+  0.5,  #pFaeces INSERT UNITS
+  0.1,  #excretionRate INSERT UNITS
+  0.4,  #mortalityRate INSERT UNITS
+  0.5,  #mineralizationRate INSERT UNITS
+  1.0, #Chl_Nratio INSERT UNITS
+  0.0012, #input 
+  0.00139, #output 1/720 (multiply this by DIN concentration) not sure if this is correct
+  .25, #nitrification rate, 
+  .25, #denitrification rate
+  10, #great than 2 is considered oxic, 1-2 is moderate oxygen, 0-1 low oxygen, 0 no oxygen
+  .5)
+
+parms_2 <- c(
+  .1,  #maxUptake INSERT UNITS
+  120,  #kspar INSERT UNITS
+  .1,  #ksdin INSERT UNITS
+  1,  #maxGrazing INSERT UNITS
+  .9,    #ksphyto INSERT UNITS
+  0.5,  #pFaeces INSERT UNITS
+  0.1,  #excretionRate INSERT UNITS
+  0.4,  #mortalityRate INSERT UNITS
+  0.5,  #mineralizationRate INSERT UNITS
+  1.0, #Chl_Nratio INSERT UNITS
+  0.0012, #input 
+  0.00139, #output 1/720 (multiply this by DIN concentration) not sure if this is correct
+  .25, #nitrification rate, 
+  .25, #denitrification rate
+  2, #great than 2 is considered oxic, 1-2 is moderate oxygen, 0-1 low oxygen, 0 no oxygen
+  .5)
+
+parms_0 <- c(
+  .1,  #maxUptake INSERT UNITS
+  120,  #kspar INSERT UNITS
+  .1,  #ksdin INSERT UNITS
+  1,  #maxGrazing INSERT UNITS
+  .9,    #ksphyto INSERT UNITS
+  0.5,  #pFaeces INSERT UNITS
+  0.1,  #excretionRate INSERT UNITS
+  0.4,  #mortalityRate INSERT UNITS
+  0.5,  #mineralizationRate INSERT UNITS
+  1.0, #Chl_Nratio INSERT UNITS
+  0.0012, #input 
+  0.00139, #output 1/720 (multiply this by DIN concentration) not sure if this is correct
+  .25, #nitrification rate, 
+  .25, #denitrification rate
+  0, #great than 2 is considered oxic, 1-2 is moderate oxygen, 0-1 low oxygen, 0 no oxygen
+  .5)
+```
+
+#Step 4: Initialize Model
+
+```{r}
+#INSERT INITIAL CONDITIONS HERE
+yini <- c(
+  PHYTO = 1, #mmolN m-3
+  ZOO = 0.8, #mmolN m-3
+  DETRITUS = 1, #mmolN m-3
+  NH4 = 4, #mmolN m-3
+  NO3 = 4) #mmolN m-3
+```
+
+```{r}
+#Use DeSolve to integrate 
+library(deSolve)
+
+simulation_time <- 365
+dt <- 1
+times <- seq(1, simulation_time, by = dt)
+
+output_10 <- ode(y = yini, times = times, func = NPZD_model, parms = parms_10, method = "ode45")
+output_2 <- ode(y = yini, times = times, func = NPZD_model, parms = parms_2, method = "ode45")
+output_0 <- ode(y = yini, times = times, func = NPZD_model, parms = parms_0, method = "ode45")
+
+df_10 <- as.data.frame(output_10)
+df_2  <- as.data.frame(output_2)
+df_0  <- as.data.frame(output_0)
+
+#had help from chatgpt to plot this because I couldn't get it right
+
+# Set up plotting
+par(mfrow = c(2, 4))  # 7 plots + 1 for legend
+cols <- c("red", "blue", "black")  # parms_0, parms_2, parms_10
+
+# Function to plot each variable
+plot_variable <- function(var, ylab, main) {
+  all_vals <- c(df_0[[var]], df_2[[var]], df_10[[var]])
+  if (all(!is.finite(all_vals))) {
+    ylim <- c(0, 300)
+  } else {
+    all_vals <- all_vals[is.finite(all_vals)]
+    y_min <- min(all_vals)
+    y_max <- max(all_vals)
+    y_range <- y_max - y_min
+    ylim <- c(y_min - 0.1 * y_range, y_max + 0.1 * y_range)
+  }
+
+  plot(times, df_0[[var]], type = "l", col = cols[1], xlab = "time (days)", ylab = ylab, main = main, ylim = ylim)
+  lines(times, df_2[[var]], col = cols[2])
+  lines(times, df_10[[var]], col = cols[3])
+}
+
+# Generate plots
+plot_variable("PHYTO", "mmolN/m3", "Phytoplankton")
+plot_variable("ZOO", "mmolN/m3", "Zooplankton")
+plot_variable("NH4", "mmolN/m3", "NH4")
+plot_variable("NO3", "mmolN/m3", "NO3")
+plot_variable("N2O_emissions.NO3", "mmolN/m3", "N2O emissions")
+plot_variable("DETRITUS", "mmolN/m3", "Detritus")
+plot_variable("denitrification.NO3", "mmolN/m3", "Denitrification")
+
+# Empty plot for legend
+plot.new()
+legend("center", legend = c("0 mgL DO", "2 mgL DO", "10 mgL DO"), col = cols, lty = 1, lwd = 2, cex = 1.2)
+
+```
+
+
+

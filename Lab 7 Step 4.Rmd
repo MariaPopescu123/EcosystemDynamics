@@ -489,32 +489,32 @@ warm_acclimCUE <- as.data.frame(warm_acclimCUE)
 par(mfrow=c(2,3)) #First number is the number of rows, and the second number is the number of columns in the plot
 
 #Plot like normal
-plot(times, control$CO2.MIC, xlab = "Time (days)", ylab = "µg g1 h1", main = "CO2 efflux", type = "l", col = "black")
+plot(times, control$CO2.MIC, xlab = "Time (days)", ylab = "µg g1 h1", main = "CO2 efflux", type = "l", col = "black", ylim = c(-.001,0.002))
 lines(times, warm_constCUE$CO2, col = "red")
 lines(times, warm_varyCUE$CO2, col = "blue")
 lines(times, warm_acclimCUE$CO2, col = "green")
 
 
 #SOC
-plot(times, control$SOC, xlab = "Time (days)", ylab = "mg g1 h1", main = "SOC", type = "l", col = "black")
+plot(times, control$SOC, xlab = "Time (days)", ylab = "mg g1 h1", main = "SOC", type = "l", col = "black", ylim = c(80,241))
 lines(times, warm_constCUE$SOC, col = "red")
 lines(times, warm_varyCUE$SOC, col = "blue")
 lines(times, warm_acclimCUE$SOC, col = "green")
 
 #DOC
-plot(times, control$DOC, xlab = "Time (days)", ylab = "µg g1 h1", main = "DOC", type = "l", col = "black")
+plot(times, control$DOC, xlab = "Time (days)", ylab = "µg g1 h1", main = "DOC", type = "l", col = "black", ylim = c(0,127))
 lines(times, warm_constCUE$DOC, col = "red")
 lines(times, warm_varyCUE$DOC, col = "blue")
 lines(times, warm_acclimCUE$DOC, col = "green")
 
 #MIC
-plot(times, control$MIC, xlab = "Time (hours)", ylab = "mg g1 h1", main = "MIC", type = "l", col = "black")
+plot(times, control$MIC, xlab = "Time (hours)", ylab = "mg g1 h1", main = "MIC", type = "l", col = "black", ylim = c(0, 3.2))
 lines(times, warm_constCUE$MIC, col = "red")
 lines(times, warm_varyCUE$MIC, col = "blue")
 lines(times, warm_acclimCUE$MIC, col = "green")
 
 #ENZ
-plot(times, control$ENZ, xlab = "Time (hours)", ylab = "µg g1 h1", main = "ENZ", type = "l", col = "black")
+plot(times, control$ENZ, xlab = "Time (hours)", ylab = "µg g1 h1", main = "ENZ", type = "l", col = "black", ylim = c(0, .02))
 lines(times, warm_constCUE$ENZ, col = "red")
 lines(times, warm_varyCUE$ENZ, col = "blue")
 lines(times, warm_acclimCUE$ENZ, col = "green")

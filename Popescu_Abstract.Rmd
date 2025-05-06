@@ -9,15 +9,13 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+Abstract
 
+The question I plan to address is how do changing rates of nitrogen deposition and temperature impact nitrous oxide emissions from a lake. Nitrous oxide is a potent greenhouse gas that is 265-300 times more powerful at trapping heat than carbon dioxide. Furthermore, N2O can remain in the atmosphere for over 100 years. Lakes can either be a source or a sink for nitrogen, and can produce nitrous oxide through microbial processes involved in nitrogen cycling. N20 can be released as a byproduct during nitrification (the conversion of ammonium to nitrate) and denitrification (the conversion of nitrate to nitrogen). Eutrophication can exacerbate N2O release, as excess nutrients can lead to more organic matter, more microbial respiration, more oxygen depletion, and more denitrification. Furthermore, temperature can exacerbate N2O release indirectly, as increasing temperatures generally indirectly increase mineralization rates via increased microbial activity and stratification. Temperature also can influence the amount of N2O that escapes to the atmosphere, as gas solubility decreases in the water column. This increase will in turn lead to an increase in temperature due to it's greenhouse gas potential. I will build upon the NPZD model by adding a flux into the system (nitrogen deposition), a flux out of the system (N2O), and adding forcing variables (N2O on temp and temp on mineralization). N2O will be a proportion of the flux from detritus to DIN. The flux of N2O will influence temperature, and temperature will influence the flux from detritus to DIN (and thus N2O as well). After building the model, I will show different scenarios with increasing rates of nitrogen deposition, increasing temperature, and then increasing temperature and nitrogen deposition. I predict that N2O emissions will increase with rising temperatures and increasing deposition. 
 
-```{r cars}
-summary(cars)
-```
+Alternatively: If it is necessary that there be an additional stock, I will break up DIN into two separate stocks (one for NH4 and one for NO3) so that I can capture the two fluxes (mineralization and nitrification).
 
+![](C:/Users/maria/OneDrive/2023 Rtudio/EcosystemDynamics/abstract_figure.png)
 
-```{r pressure, echo=FALSE}
-plot(pressure)
-```
 
 
